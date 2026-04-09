@@ -1,0 +1,1933 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>物販売上ダッシュボード v5</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700&display=swap');
+:root{
+  --bg:#fafaf8;--sur:#fff;--bdr:#ede9e4;
+  --tp:#2d2926;--ts:#7a746e;--tm:#b0a89e;
+  --m1:#f4b8c1;--m1d:#c8707e;
+  --m2:#b8d8f4;--m2d:#5a9fd4;
+  --m3:#b8f4ce;--m3d:#3eb86a;
+  --m4:#f4e4b8;--m4d:#c89830;
+  --m5:#d4b8f4;--m5d:#9060d0;
+  --m6:#f4d4b8;--m6d:#c87040;
+  --m7:#b8f4f0;--m7d:#30b8b0;
+  --acc:#e8a4b0;--acc-bg:#fdf0f3;
+  --r:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Outfit','Noto Sans JP',sans-serif;background:var(--bg);color:var(--tp);padding:16px 20px 48px;}
+
+/* HEADER */
+.hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:1.5px solid var(--bdr);}
+.hdr-title{font-size:19px;font-weight:700;}
+.hdr-sub{font-size:11px;color:var(--ts);margin-top:2px;}
+.hdr-r{display:flex;gap:6px;align-items:center;}
+.lang-btn{border:1.5px solid var(--bdr);background:var(--sur);color:var(--ts);font-size:11px;font-weight:600;padding:4px 11px;border-radius:20px;cursor:pointer;font-family:inherit;transition:all .15s;}
+.lang-btn.active{background:var(--tp);border-color:var(--tp);color:#fff;}
+.badge{background:var(--m1);color:#8a3040;font-size:11px;font-weight:600;padding:3px 11px;border-radius:20px;}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(9,1fr);gap:8px;margin-bottom:12px;}
+.kpi{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--r);padding:11px 12px;position:relative;overflow:hidden;}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.kpi.c0::after{background:linear-gradient(90deg,var(--m1),var(--m2));}
+.kpi.c1::after{background:var(--m1);}  .kpi.c2::after{background:var(--m2);}
+.kpi.c3::after{background:var(--m3);}  .kpi.c4::after{background:var(--m4);}
+.kpi.c5::after{background:var(--m5);}  .kpi.c6::after{background:var(--m2d);}
+.kpi.c7::after{background:var(--m3d);} .kpi.c8::after{background:var(--m5d);}
+.kpi-lbl{font-size:9px;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;line-height:1.3;}
+.kpi-val{font-size:16px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.kpi-sub{font-size:10px;color:var(--ts);margin-top:3px;}
+.kpi-pct{display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:8px;margin-top:3px;background:#f0f0f0;color:var(--ts);}
+
+/* CONTROL PANEL */
+.ctrl-panel{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--r);padding:12px 16px;margin-bottom:12px;}
+.ctrl-rows{display:flex;flex-direction:column;gap:8px;}
+.ctrl-row{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;}
+.ctrl-row-label{font-size:10px;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:.5px;min-width:68px;flex-shrink:0;padding-top:5px;}
+.ctrl-row-body{display:flex;flex-direction:column;gap:4px;flex:1;}
+.bg{display:flex;flex-wrap:wrap;gap:4px;align-items:center;}
+.btn{border:1.5px solid var(--bdr);background:var(--sur);color:var(--ts);font-size:11px;font-weight:500;padding:4px 11px;border-radius:20px;cursor:pointer;transition:all .12s;font-family:inherit;white-space:nowrap;}
+.btn:hover{border-color:var(--acc);color:var(--tp);}
+.btn.active{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600;}
+.preset-btn{border:1.5px solid var(--bdr);background:var(--sur);color:var(--ts);font-size:10px;font-weight:600;padding:3px 9px;border-radius:10px;cursor:pointer;font-family:inherit;transition:all .12s;white-space:nowrap;}
+.preset-btn:hover{border-color:var(--acc);color:var(--tp);}
+.preset-btn.active{background:var(--acc);border-color:var(--acc);color:#fff;}
+.sep{width:1px;height:18px;background:var(--bdr);margin:0 2px;align-self:center;}
+
+/* RANGE MONTHS */
+.range-months{display:flex;flex-wrap:wrap;gap:3px;}
+.rm{border:1.5px solid var(--bdr);background:var(--sur);color:var(--ts);font-size:9px;font-weight:500;padding:3px 7px;border-radius:8px;cursor:pointer;font-family:inherit;transition:all .1s;white-space:nowrap;}
+.rm:hover{border-color:var(--acc);}
+.rm.in-range{background:var(--m2);border-color:var(--m2d);color:#1a5080;}
+.rm.start{background:var(--m2d);border-color:var(--m2d);color:#fff;font-weight:700;}
+.rm.end{background:var(--m2d);border-color:var(--m2d);color:#fff;font-weight:700;}
+.rm.new-era{border-color:#a0d0b0;color:#2a7040;}
+.rm.new-era.in-range{background:var(--m3);border-color:var(--m3d);color:#1a6030;}
+.rm.new-era.start,.rm.new-era.end{background:var(--m3d);border-color:var(--m3d);color:#fff;}
+.row-label-sm{font-size:9px;font-weight:600;color:var(--tm);min-width:36px;padding-top:4px;flex-shrink:0;}
+
+/* SERIES PICKER */
+.series-picker{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--r);padding:12px 16px;margin-bottom:12px;}
+.sp-title{font-size:11px;font-weight:700;color:var(--tp);margin-bottom:10px;}
+.sp-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+.sp-select{border:1.5px solid var(--bdr);background:var(--sur);color:var(--tp);font-size:12px;font-weight:500;padding:6px 10px;border-radius:8px;cursor:pointer;font-family:inherit;outline:none;}
+.sp-select:focus{border-color:var(--acc);}
+.sp-add-btn{background:var(--tp);border:none;color:#fff;font-size:12px;font-weight:600;padding:6px 16px;border-radius:8px;cursor:pointer;font-family:inherit;transition:all .12s;}
+.sp-add-btn:hover{background:#444;}
+.sp-clear-btn{background:#f5f0ee;border:1.5px solid var(--bdr);color:#8a7a70;font-size:11px;font-weight:500;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:inherit;}
+.sp-clear-btn:hover{background:#fde8ec;border-color:var(--m1d);color:var(--m1d);}
+.series-tags{display:flex;flex-wrap:wrap;gap:6px;min-height:28px;align-items:center;}
+.s-tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;cursor:default;border:1.5px solid transparent;}
+.s-tag .s-x{font-size:13px;font-weight:700;cursor:pointer;opacity:.7;line-height:1;}
+.s-tag .s-x:hover{opacity:1;}
+.sp-hint{font-size:11px;color:var(--ts);margin-top:6px;}
+.chart-type-row{display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap;}
+.cb{border:1.5px solid var(--bdr);background:var(--sur);color:var(--ts);font-size:11px;font-weight:500;padding:4px 12px;border-radius:20px;cursor:pointer;font-family:inherit;transition:all .12s;}
+.cb:hover{border-color:var(--acc);}
+.cb.active{background:var(--tp);border-color:var(--tp);color:#fff;font-weight:600;}
+.pct-toggle{display:flex;align-items:center;gap:6px;margin-left:8px;}
+
+/* CHART */
+.chart-card{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--r);padding:16px 20px;margin-bottom:12px;}
+.chart-tb{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;flex-wrap:wrap;gap:6px;}
+.chart-title{font-size:14px;font-weight:600;}
+.chart-sub{font-size:11px;color:var(--ts);margin-top:2px;}
+.chart-wrap{position:relative;height:380px;}
+
+/* ANALYSIS */
+.analysis{background:var(--acc-bg);border:1px solid #f0c8d0;border-radius:var(--r);padding:14px 18px;margin-bottom:12px;}
+.ana-hdr{display:flex;align-items:center;gap:6px;margin-bottom:10px;}
+.ana-title{font-size:13px;font-weight:700;color:var(--m1d);}
+.ana-section{margin-bottom:10px;}
+.ana-sec-title{font-size:10px;font-weight:700;color:var(--m1d);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;padding-bottom:3px;border-bottom:1px solid #f0c8d0;}
+.ana-bullets{list-style:none;display:flex;flex-direction:column;gap:4px;}
+.ana-bullets li{font-size:12px;color:var(--tp);line-height:1.5;padding-left:14px;position:relative;}
+.ana-bullets li::before{content:'·';position:absolute;left:0;color:var(--m1d);font-weight:700;font-size:16px;line-height:1.1;}
+.hp{color:#2e7d4f;font-weight:600;}.hn{color:#c0392b;font-weight:600;}.hb{color:#2255aa;font-weight:600;}
+
+/* TABLE */
+.table-card{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--r);padding:16px 20px;}
+.table-title{font-size:14px;font-weight:600;margin-bottom:10px;}
+.tw{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{background:var(--bg);color:var(--ts);font-weight:600;text-align:right;padding:7px 10px;border-bottom:1.5px solid var(--bdr);white-space:nowrap;font-size:11px;}
+th:first-child{text-align:left;}
+td{padding:6px 10px;text-align:right;border-bottom:1px solid var(--bdr);color:var(--tp);font-variant-numeric:tabular-nums;font-size:12px;}
+td:first-child{text-align:left;font-weight:500;}
+.rt td{font-weight:700;background:#fdf8f5;border-top:1.5px solid var(--bdr);}
+.ryoy td{font-size:10px;color:var(--ts);background:#fafaf8;}
+tr:not(.rt):not(.ryoy):hover td{background:#fdf5f7;}
+.h0{color:var(--tm);}.h1{color:#c87080;}.h2{color:#a84050;font-weight:600;}
+.pd{color:#2e7d4f;}.nd{color:#c0392b;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div>
+    <div class="hdr-title" data-i18n="title">物販売上ダッシュボード</div>
+    <div class="hdr-sub" data-i18n="subtitle">商品群 × 販売管道 | FY2024–FY2025 ／ 単位：万元</div>
+  </div>
+  <div class="hdr-r">
+    <button class="lang-btn active" onclick="setLang('ja')">日本語</button>
+    <button class="lang-btn" onclick="setLang('zh')">繁體中文</button>
+    <span class="badge">TBBS</span>
+  </div>
+</div>
+
+<!-- TAB NAV -->
+<div style="display:flex;gap:0;margin-bottom:14px;border-bottom:2px solid var(--bdr);">
+  <button class="tab-btn active" id="tabSales" onclick="switchTab('sales')" data-i18n="tabSales">📊 売上分析</button>
+  <button class="tab-btn" id="tabBCL" onclick="switchTab('bcl')" data-i18n="tabBCL">👥 BCL DB</button>
+  <button class="tab-btn" id="tabMember" onclick="switchTab('member')" data-i18n="tabMember">🔄 新旧会員比率</button>
+</div>
+
+<!-- TAB: SALES -->
+<div id="paneSales">
+
+<!-- KPI -->
+<div class="kpi-grid" id="kpiGrid"></div>
+
+<!-- CONTROL PANEL -->
+<div class="ctrl-panel">
+  <div class="ctrl-rows">
+    <!-- 期間プリセット -->
+    <div class="ctrl-row">
+      <span class="ctrl-row-label" data-i18n="rangeLbl">表示期間</span>
+      <div class="ctrl-row-body">
+        <div class="bg" id="presetBtns">
+          <button class="preset-btn" onclick="setPreset('all')" data-p="all" data-i18n="pAll">全期間</button>
+          <button class="preset-btn active" onclick="setPreset('new')" data-p="new" data-i18n="pNew">新体制（24/10〜）</button>
+          <button class="preset-btn" onclick="setPreset('fy24')" data-p="fy24">FY24</button>
+          <button class="preset-btn" onclick="setPreset('h1fy24')" data-p="h1fy24" data-i18n="pH1FY24">FY24前半</button>
+          <button class="preset-btn" onclick="setPreset('h2fy24')" data-p="h2fy24" data-i18n="pH2FY24">FY24後半</button>
+          <button class="preset-btn" onclick="setPreset('fy25')" data-p="fy25">FY25</button>
+          <button class="preset-btn" onclick="setPreset('h1fy25')" data-p="h1fy25" data-i18n="pH1FY25">FY25前半</button>
+          <button class="preset-btn" onclick="setPreset('h2fy25')" data-p="h2fy25" data-i18n="pH2FY25">FY25後半</button>
+        </div>
+        <!-- FY24 months row -->
+        <div class="bg" style="align-items:center;">
+          <span class="row-label-sm">FY24</span>
+          <div class="range-months" id="rangeMonthsFY24"></div>
+        </div>
+        <!-- FY25 months row -->
+        <div class="bg" style="align-items:center;">
+          <span class="row-label-sm">FY25</span>
+          <div class="range-months" id="rangeMonthsFY25"></div>
+        </div>
+      </div>
+    </div>
+    <!-- 時間軸 -->
+    <div class="ctrl-row">
+      <span class="ctrl-row-label" data-i18n="ctrlAxis">時間軸</span>
+      <div class="bg" id="axisGroup">
+        <button class="btn active" onclick="setAxis('month')" data-val="month" data-i18n="month">月次</button>
+        <button class="btn" onclick="setAxis('quarter')" data-val="quarter" data-i18n="quarter">四半期</button>
+        <button class="btn" onclick="setAxis('year')" data-val="year" data-i18n="year">年度</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SERIES PICKER -->
+<div class="series-picker">
+  <div class="sp-title" data-i18n="spTitle">商品群 × 管道　比較系列</div>
+  <div class="sp-controls">
+    <select id="selProduct" class="sp-select">
+      <option value="學習商品" data-i18n-opt="p0">學習商品</option>
+      <option value="周邊商品" data-i18n-opt="p1">周邊商品</option>
+      <option value="Mirafeel">Mirafeel</option>
+      <option value="__ALL__" data-i18n-opt="allProd">全商品群</option>
+    </select>
+    <select id="selChannel" class="sp-select">
+      <option value="WEB">WEB</option>
+      <option value="TM">TM</option>
+      <option value="KOL">KOL</option>
+      <option value="EC">EC</option>
+      <option value="其他" data-i18n-opt="other">其他</option>
+      <option value="__ALL__" data-i18n-opt="allCh">全管道</option>
+    </select>
+    <button class="sp-add-btn" onclick="addSeries()" data-i18n="addBtn">＋ 新増系列</button>
+    <button class="sp-clear-btn" onclick="clearSeries()" data-i18n="clearBtn">全削除</button>
+  </div>
+  <div class="series-tags" id="seriesTags"></div>
+  <p class="sp-hint" data-i18n="spHint">商品群と管道を選んで新増。複数系列を重ねて比較できます。</p>
+  <div class="chart-type-row">
+    <button class="cb active" onclick="setChartType('bar')" id="btnBar" data-i18n="stacked">積み上げ棒</button>
+    <button class="cb" onclick="setChartType('line')" id="btnLine" data-i18n="line">折れ線</button>
+    <div class="sep"></div>
+    <div class="pct-toggle" id="pctToggleWrap">
+      <button class="cb" onclick="setVM('pct')" id="btnPct" data-i18n="ratio">比率（%）</button>
+      <button class="cb active" onclick="setVM('abs')" id="btnAbs" data-i18n="actual">実数</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHART -->
+<div class="chart-card">
+  <div class="chart-tb">
+    <div>
+      <div class="chart-title" id="chartTitle">—</div>
+      <div class="chart-sub" id="chartSub">—</div>
+    </div>
+    <div id="legendInline" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;"></div>
+  </div>
+  <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
+  <!-- Launch timeline -->
+  <div id="launchTimeline" style="position:relative;"></div>
+</div>
+
+<!-- ANALYSIS -->
+<div class="analysis">
+  <div class="ana-hdr" onclick="toggleSection('anaContent','anaArrow')" style="cursor:pointer;user-select:none;">
+    <span style="font-size:16px;">📊</span>
+    <span class="ana-title" data-i18n="anaTitle">自動分析（新体制 24/10〜）</span>
+    <span id="anaArrow" style="margin-left:auto;font-size:13px;color:var(--m1d);">▸</span>
+  </div>
+  <div id="anaContent" style="display:none;margin-top:8px;"></div>
+</div>
+
+<!-- TABLE -->
+<div class="table-card">
+  <div class="table-title" data-i18n="crossTitle">クロス集計 — 商品群 × 管道（万元・表示期間）</div>
+  <div class="tw"><table id="crossTable"></table></div>
+</div>
+
+<script>
+
+// ══════════════════════════════════════════════
+// i18n DICTIONARY (defined first, used by applyI18n)
+// ══════════════════════════════════════════════
+const ALL_I18N = {
+  title:       {ja:'物販売上ダッシュボード',       zh:'商品銷售儀表板'},
+  subtitle:    {ja:'商品群 × 販売管道 | FY2024–FY2025 ／ 単位：万元', zh:'商品群 × 銷售管道 | FY2024–FY2025 ／ 單位：萬元'},
+  tabSales:    {ja:'📊 売上分析',    zh:'📊 銷售分析'},
+  tabBCL:      {ja:'👥 BCL DB',     zh:'👥 BCL DB'},
+  tabMember:   {ja:'🔄 新旧会員比率', zh:'🔄 新舊會員比例'},
+  rangeLbl:    {ja:'表示期間',       zh:'顯示期間'},
+  pAll:        {ja:'全期間',         zh:'全期間'},
+  pNew:        {ja:'新体制（24/10〜）',zh:'新體制（24/10〜）'},
+  pH1FY24:     {ja:'FY24前半',       zh:'FY24前半'},
+  pH2FY24:     {ja:'FY24後半',       zh:'FY24後半'},
+  pH1FY25:     {ja:'FY25前半',       zh:'FY25前半'},
+  pH2FY25:     {ja:'FY25後半',       zh:'FY25後半'},
+  ctrlAxis:    {ja:'時間軸',         zh:'時間軸'},
+  ctrlSeries:  {ja:'系列',           zh:'系列'},
+  ctrlChart:   {ja:'グラフ',         zh:'圖表'},
+  month:       {ja:'月次',           zh:'月次'},
+  quarter:     {ja:'四半期',         zh:'季度'},
+  year:        {ja:'年度',           zh:'年度'},
+  byProduct:   {ja:'商品群別',       zh:'依商品群'},
+  byChannel:   {ja:'管道別',         zh:'依管道'},
+  line:        {ja:'折れ線',         zh:'折線圖'},
+  stacked:     {ja:'積み上げ棒',     zh:'堆疊長條'},
+  total:       {ja:'総計',           zh:'總計'},
+  actual:      {ja:'実数',           zh:'實際數值'},
+  ratio:       {ja:'比率（%）',      zh:'比例（%）'},
+  spTitle:     {ja:'商品群 × 管道　比較系列', zh:'商品群 × 管道　比較系列'},
+  addBtn:      {ja:'＋ 新増系列',    zh:'＋ 新增系列'},
+  clearBtn:    {ja:'全削除',         zh:'全刪除'},
+  spHint:      {ja:'商品群と管道を選んで追加。複数系列を重ねて比較できます。', zh:'選擇商品群和管道後新增，可重疊多組進行比較。'},
+  p1:          {ja:'學習商品',       zh:'學習商品'},
+  p2:          {ja:'周邊商品',       zh:'周邊商品'},
+  allProd:     {ja:'全商品群',       zh:'全商品群'},
+  allCh:       {ja:'全管道',         zh:'全管道'},
+  other:       {ja:'其他',           zh:'其他'},
+  anaTitle:    {ja:'自動分析（新体制 24/10〜）', zh:'自動分析（新體制 24/10〜）'},
+  crossTitle:  {ja:'クロス集計 — 商品群 × 管道（万元・表示期間）', zh:'交叉分析表 — 商品群 × 管道（萬元）'},
+  prodTitle:   {ja:'學習商品 商品一覧', zh:'學習商品 商品一覽'},
+  prodToggle:  {ja:'表示する ▾',    zh:'顯示 ▾'},
+  bclMonthlyTitle:   {ja:'月次 新規BCL登録数',   zh:'月次 新規BCL登錄數'},
+  bclMonthlySubtitle:{ja:'有効会員（青）＋無効会員（ピンク）・2024/04〜', zh:'有效會員（藍）＋無效會員（粉）・2024/04〜'},
+  bclCumTitle:       {ja:'累計BCL（有効会員）推移', zh:'累計BCL（有效會員）趨勢'},
+  bclCumSubtitle:    {ja:'2024/01〜現在　DB資産の積み上がり', zh:'2024/01〜現在　DB資產累積'},
+  bclAgeTitle:       {ja:'月齢分布 × 月次（有効会員）', zh:'月齡分佈 × 月次（有效會員）'},
+  bclAgeSubtitle:    {ja:'登録時月齢バケット別構成（BCL活化開始時点）', zh:'登錄時月齡分佈（BCL活化開始時點）'},
+  bclDonutTitle:     {ja:'月齢分布 全体構成比（現在月齢）', zh:'月齡分佈 整體佔比（現齡）'},
+  bclTableTitle:     {ja:'月齢バケット × 月次 クロス集計', zh:'月齡區間 × 月次 交叉統計'},
+  bclInsightTitle:   {ja:'DBと売上の関係性インサイト', zh:'DB與銷售的關聯性洞察'},
+  memberInsightTitle:{ja:'分析インサイト — 新旧会員比率', zh:'分析洞察 — 新舊會員比例'},
+  memberChartTitle:  {ja:'學習商品 購入者属性 — 新会員 vs 旧講座会員', zh:'學習商品 購買者屬性 — 新會員 vs 舊講座會員'},
+  memberChartSub:    {ja:'月次比率（%）・月講座終了前後の構造変化', zh:'月次比例（%）・月刊講座前後的結構性變化'},
+  memberTrendTitle:  {ja:'新会員比率 推移ライン', zh:'新會員比例 趨勢折線'},
+  memberTrendSub:    {ja:'50%ラインを境に「新会員主導」へ転換', zh:'以50%為界，轉向「新會員主導」時代'},
+};
+
+function applyI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const m = ALL_I18N[el.dataset.i18n];
+    if(m) el.textContent = m[lang] || m['ja'];
+  });
+  document.querySelectorAll('[data-i18n-opt]').forEach(el=>{
+    const m = ALL_I18N[el.dataset.i18nOpt];
+    if(m) el.textContent = m[lang] || m['ja'];
+  });
+  document.querySelectorAll('.lang-btn').forEach(b=>
+    b.classList.toggle('active', b.textContent===(lang==='ja'?'日本語':'繁體中文')));
+}
+
+
+// ══════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════
+const RAW=[{"商品群":"學習商品","管道":"WEB","月":"202404","売上":538114,"年度":"FY24","四半期":"Q1","月表示":"2024/04","FY四半期":"FY24-Q1"},{"商品群":"學習商品","管道":"TM","月":"202404","売上":1937237,"年度":"FY24","四半期":"Q1","月表示":"2024/04","FY四半期":"FY24-Q1"},{"商品群":"學習商品","管道":"KOL","月":"202404","売上":168103,"年度":"FY24","四半期":"Q1","月表示":"2024/04","FY四半期":"FY24-Q1"},{"商品群":"學習商品","管道":"EC","月":"202404","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/04","FY四半期":"FY24-Q1"},{"商品群":"學習商品","管道":"其他","月":"202404","売上":103719,"年度":"FY24","四半期":"Q1","月表示":"2024/04","FY四半期":"FY24-Q1"},{"商品群":"周邊商品","管道":"WEB","月":"202404","売上":212264,"年度":"FY24","四半期":"Q1","月表示":"2024/04","FY四半期":"FY24-Q1"},{"商品群":"周邊商品","管道":"TM","月":"202404","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/04","FY四半期":"FY24-Q1"},{"商品群":"周邊商品","管道":"KOL","月":"202404","売上":3474,"年度":"FY24","四半期":"Q1","月表示":"2024/04","FY四半期":"FY24-Q1"},{"商品群":"周邊商品","管道":"EC","月":"202404","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/04","FY四半期":"FY24-Q1"},{"商品群":"周邊商品","管道":"其他","月":"202404","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/04","FY四半期":"FY24-Q1"},{"商品群":"Mirafeel","管道":"WEB","月":"202404","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/04","FY四半期":"FY24-Q1"},{"商品群":"Mirafeel","管道":"TM","月":"202404","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/04","FY四半期":"FY24-Q1"},{"商品群":"Mirafeel","管道":"KOL","月":"202404","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/04","FY四半期":"FY24-Q1"},{"商品群":"Mirafeel","管道":"EC","月":"202404","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/04","FY四半期":"FY24-Q1"},{"商品群":"Mirafeel","管道":"其他","月":"202404","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/04","FY四半期":"FY24-Q1"},{"商品群":"學習商品","管道":"WEB","月":"202405","売上":439064,"年度":"FY24","四半期":"Q1","月表示":"2024/05","FY四半期":"FY24-Q1"},{"商品群":"學習商品","管道":"TM","月":"202405","売上":1570548,"年度":"FY24","四半期":"Q1","月表示":"2024/05","FY四半期":"FY24-Q1"},{"商品群":"學習商品","管道":"KOL","月":"202405","売上":424299,"年度":"FY24","四半期":"Q1","月表示":"2024/05","FY四半期":"FY24-Q1"},{"商品群":"學習商品","管道":"EC","月":"202405","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/05","FY四半期":"FY24-Q1"},{"商品群":"學習商品","管道":"其他","月":"202405","売上":64384,"年度":"FY24","四半期":"Q1","月表示":"2024/05","FY四半期":"FY24-Q1"},{"商品群":"周邊商品","管道":"WEB","月":"202405","売上":362859,"年度":"FY24","四半期":"Q1","月表示":"2024/05","FY四半期":"FY24-Q1"},{"商品群":"周邊商品","管道":"TM","月":"202405","売上":761,"年度":"FY24","四半期":"Q1","月表示":"2024/05","FY四半期":"FY24-Q1"},{"商品群":"周邊商品","管道":"KOL","月":"202405","売上":714,"年度":"FY24","四半期":"Q1","月表示":"2024/05","FY四半期":"FY24-Q1"},{"商品群":"周邊商品","管道":"EC","月":"202405","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/05","FY四半期":"FY24-Q1"},{"商品群":"周邊商品","管道":"其他","月":"202405","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/05","FY四半期":"FY24-Q1"},{"商品群":"Mirafeel","管道":"WEB","月":"202405","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/05","FY四半期":"FY24-Q1"},{"商品群":"Mirafeel","管道":"TM","月":"202405","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/05","FY四半期":"FY24-Q1"},{"商品群":"Mirafeel","管道":"KOL","月":"202405","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/05","FY四半期":"FY24-Q1"},{"商品群":"Mirafeel","管道":"EC","月":"202405","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/05","FY四半期":"FY24-Q1"},{"商品群":"Mirafeel","管道":"其他","月":"202405","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/05","FY四半期":"FY24-Q1"},{"商品群":"學習商品","管道":"WEB","月":"202406","売上":399734,"年度":"FY24","四半期":"Q1","月表示":"2024/06","FY四半期":"FY24-Q1"},{"商品群":"學習商品","管道":"TM","月":"202406","売上":1552926,"年度":"FY24","四半期":"Q1","月表示":"2024/06","FY四半期":"FY24-Q1"},{"商品群":"學習商品","管道":"KOL","月":"202406","売上":110959,"年度":"FY24","四半期":"Q1","月表示":"2024/06","FY四半期":"FY24-Q1"},{"商品群":"學習商品","管道":"EC","月":"202406","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/06","FY四半期":"FY24-Q1"},{"商品群":"學習商品","管道":"其他","月":"202406","売上":39811,"年度":"FY24","四半期":"Q1","月表示":"2024/06","FY四半期":"FY24-Q1"},{"商品群":"周邊商品","管道":"WEB","月":"202406","売上":214046,"年度":"FY24","四半期":"Q1","月表示":"2024/06","FY四半期":"FY24-Q1"},{"商品群":"周邊商品","管道":"TM","月":"202406","売上":856,"年度":"FY24","四半期":"Q1","月表示":"2024/06","FY四半期":"FY24-Q1"},{"商品群":"周邊商品","管道":"KOL","月":"202406","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/06","FY四半期":"FY24-Q1"},{"商品群":"周邊商品","管道":"EC","月":"202406","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/06","FY四半期":"FY24-Q1"},{"商品群":"周邊商品","管道":"其他","月":"202406","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/06","FY四半期":"FY24-Q1"},{"商品群":"Mirafeel","管道":"WEB","月":"202406","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/06","FY四半期":"FY24-Q1"},{"商品群":"Mirafeel","管道":"TM","月":"202406","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/06","FY四半期":"FY24-Q1"},{"商品群":"Mirafeel","管道":"KOL","月":"202406","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/06","FY四半期":"FY24-Q1"},{"商品群":"Mirafeel","管道":"EC","月":"202406","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/06","FY四半期":"FY24-Q1"},{"商品群":"Mirafeel","管道":"其他","月":"202406","売上":0,"年度":"FY24","四半期":"Q1","月表示":"2024/06","FY四半期":"FY24-Q1"},{"商品群":"學習商品","管道":"WEB","月":"202407","売上":2520210,"年度":"FY24","四半期":"Q2","月表示":"2024/07","FY四半期":"FY24-Q2"},{"商品群":"學習商品","管道":"TM","月":"202407","売上":3236038,"年度":"FY24","四半期":"Q2","月表示":"2024/07","FY四半期":"FY24-Q2"},{"商品群":"學習商品","管道":"KOL","月":"202407","売上":8567177,"年度":"FY24","四半期":"Q2","月表示":"2024/07","FY四半期":"FY24-Q2"},{"商品群":"學習商品","管道":"EC","月":"202407","売上":20001,"年度":"FY24","四半期":"Q2","月表示":"2024/07","FY四半期":"FY24-Q2"},{"商品群":"學習商品","管道":"其他","月":"202407","売上":83046,"年度":"FY24","四半期":"Q2","月表示":"2024/07","FY四半期":"FY24-Q2"},{"商品群":"周邊商品","管道":"WEB","月":"202407","売上":373101,"年度":"FY24","四半期":"Q2","月表示":"2024/07","FY四半期":"FY24-Q2"},{"商品群":"周邊商品","管道":"TM","月":"202407","売上":0,"年度":"FY24","四半期":"Q2","月表示":"2024/07","FY四半期":"FY24-Q2"},{"商品群":"周邊商品","管道":"KOL","月":"202407","売上":0,"年度":"FY24","四半期":"Q2","月表示":"2024/07","FY四半期":"FY24-Q2"},{"商品群":"周邊商品","管道":"EC","月":"202407","売上":41028,"年度":"FY24","四半期":"Q2","月表示":"2024/07","FY四半期":"FY24-Q2"},{"商品群":"周邊商品","管道":"其他","月":"202407","売上":0,"年度":"FY24","四半期":"Q2","月表示":"2024/07","FY四半期":"FY24-Q2"},{"商品群":"Mirafeel","管道":"WEB","月":"202407","売上":0,"年度":"FY24","四半期":"Q2","月表示":"2024/07","FY四半期":"FY24-Q2"},{"商品群":"Mirafeel","管道":"TM","月":"202407","売上":0,"年度":"FY24","四半期":"Q2","月表示":"2024/07","FY四半期":"FY24-Q2"},{"商品群":"Mirafeel","管道":"KOL","月":"202407","売上":0,"年度":"FY24","四半期":"Q2","月表示":"2024/07","FY四半期":"FY24-Q2"},{"商品群":"Mirafeel","管道":"EC","月":"202407","売上":0,"年度":"FY24","四半期":"Q2","月表示":"2024/07","FY四半期":"FY24-Q2"},{"商品群":"Mirafeel","管道":"其他","月":"202407","売上":0,"年度":"FY24","四半期":"Q2","月表示":"2024/07","FY四半期":"FY24-Q2"},{"商品群":"學習商品","管道":"WEB","月":"202408","売上":1458857,"年度":"FY24","四半期":"Q2","月表示":"2024/08","FY四半期":"FY24-Q2"},{"商品群":"學習商品","管道":"TM","月":"202408","売上":3123088,"年度":"FY24","四半期":"Q2","月表示":"2024/08","FY四半期":"FY24-Q2"},{"商品群":"學習商品","管道":"KOL","月":"202408","売上":1541446,"年度":"FY24","四半期":"Q2","月表示":"2024/08","FY四半期":"FY24-Q2"},{"商品群":"學習商品","管道":"EC","月":"202408","売上":171039,"年度":"FY24","四半期":"Q2","月表示":"2024/08","FY四半期":"FY24-Q2"},{"商品群":"學習商品","管道":"其他","月":"202408","売上":36284,"年度":"FY24","四半期":"Q2","月表示":"2024/08","FY四半期":"FY24-Q2"},{"商品群":"周邊商品","管道":"WEB","月":"202408","売上":356324,"年度":"FY24","四半期":"Q2","月表示":"2024/08","FY四半期":"FY24-Q2"},{"商品群":"周邊商品","管道":"TM","月":"202408","売上":760,"年度":"FY24","四半期":"Q2","月表示":"2024/08","FY四半期":"FY24-Q2"},{"商品群":"周邊商品","管道":"KOL","月":"202408","売上":4046,"年度":"FY24","四半期":"Q2","月表示":"2024/08","FY四半期":"FY24-Q2"},{"商品群":"周邊商品","管道":"EC","月":"202408","売上":70516,"年度":"FY24","四半期":"Q2","月表示":"2024/08","FY四半期":"FY24-Q2"},{"商品群":"周邊商品","管道":"其他","月":"202408","売上":5320,"年度":"FY24","四半期":"Q2","月表示":"2024/08","FY四半期":"FY24-Q2"},{"商品群":"Mirafeel","管道":"WEB","月":"202408","売上":0,"年度":"FY24","四半期":"Q2","月表示":"2024/08","FY四半期":"FY24-Q2"},{"商品群":"Mirafeel","管道":"TM","月":"202408","売上":0,"年度":"FY24","四半期":"Q2","月表示":"2024/08","FY四半期":"FY24-Q2"},{"商品群":"Mirafeel","管道":"KOL","月":"202408","売上":0,"年度":"FY24","四半期":"Q2","月表示":"2024/08","FY四半期":"FY24-Q2"},{"商品群":"Mirafeel","管道":"EC","月":"202408","売上":0,"年度":"FY24","四半期":"Q2","月表示":"2024/08","FY四半期":"FY24-Q2"},{"商品群":"Mirafeel","管道":"其他","月":"202408","売上":0,"年度":"FY24","四半期":"Q2","月表示":"2024/08","FY四半期":"FY24-Q2"},{"商品群":"學習商品","管道":"WEB","月":"202409","売上":510926,"年度":"FY24","四半期":"Q2","月表示":"2024/09","FY四半期":"FY24-Q2"},{"商品群":"學習商品","管道":"TM","月":"202409","売上":1051380,"年度":"FY24","四半期":"Q2","月表示":"2024/09","FY四半期":"FY24-Q2"},{"商品群":"學習商品","管道":"KOL","月":"202409","売上":309319,"年度":"FY24","四半期":"Q2","月表示":"2024/09","FY四半期":"FY24-Q2"},{"商品群":"學習商品","管道":"EC","月":"202409","売上":128659,"年度":"FY24","四半期":"Q2","月表示":"2024/09","FY四半期":"FY24-Q2"},{"商品群":"學習商品","管道":"其他","月":"202409","売上":312477,"年度":"FY24","四半期":"Q2","月表示":"2024/09","FY四半期":"FY24-Q2"},{"商品群":"周邊商品","管道":"WEB","月":"202409","売上":199259,"年度":"FY24","四半期":"Q2","月表示":"2024/09","FY四半期":"FY24-Q2"},{"商品群":"周邊商品","管道":"TM","月":"202409","売上":0,"年度":"FY24","四半期":"Q2","月表示":"2024/09","FY四半期":"FY24-Q2"},{"商品群":"周邊商品","管道":"KOL","月":"202409","売上":1284,"年度":"FY24","四半期":"Q2","月表示":"2024/09","FY四半期":"FY24-Q2"},{"商品群":"周邊商品","管道":"EC","月":"202409","売上":77295,"年度":"FY24","四半期":"Q2","月表示":"2024/09","FY四半期":"FY24-Q2"},{"商品群":"周邊商品","管道":"其他","月":"202409","売上":16358,"年度":"FY24","四半期":"Q2","月表示":"2024/09","FY四半期":"FY24-Q2"},{"商品群":"Mirafeel","管道":"WEB","月":"202409","売上":27410,"年度":"FY24","四半期":"Q2","月表示":"2024/09","FY四半期":"FY24-Q2"},{"商品群":"Mirafeel","管道":"TM","月":"202409","売上":0,"年度":"FY24","四半期":"Q2","月表示":"2024/09","FY四半期":"FY24-Q2"},{"商品群":"Mirafeel","管道":"KOL","月":"202409","売上":0,"年度":"FY24","四半期":"Q2","月表示":"2024/09","FY四半期":"FY24-Q2"},{"商品群":"Mirafeel","管道":"EC","月":"202409","売上":0,"年度":"FY24","四半期":"Q2","月表示":"2024/09","FY四半期":"FY24-Q2"},{"商品群":"Mirafeel","管道":"其他","月":"202409","売上":0,"年度":"FY24","四半期":"Q2","月表示":"2024/09","FY四半期":"FY24-Q2"},{"商品群":"學習商品","管道":"WEB","月":"202410","売上":1752527,"年度":"FY24","四半期":"Q3","月表示":"2024/10","FY四半期":"FY24-Q3"},{"商品群":"學習商品","管道":"TM","月":"202410","売上":680300,"年度":"FY24","四半期":"Q3","月表示":"2024/10","FY四半期":"FY24-Q3"},{"商品群":"學習商品","管道":"KOL","月":"202410","売上":3319540,"年度":"FY24","四半期":"Q3","月表示":"2024/10","FY四半期":"FY24-Q3"},{"商品群":"學習商品","管道":"EC","月":"202410","売上":632207,"年度":"FY24","四半期":"Q3","月表示":"2024/10","FY四半期":"FY24-Q3"},{"商品群":"學習商品","管道":"其他","月":"202410","売上":6760,"年度":"FY24","四半期":"Q3","月表示":"2024/10","FY四半期":"FY24-Q3"},{"商品群":"周邊商品","管道":"WEB","月":"202410","売上":497848,"年度":"FY24","四半期":"Q3","月表示":"2024/10","FY四半期":"FY24-Q3"},{"商品群":"周邊商品","管道":"TM","月":"202410","売上":45322,"年度":"FY24","四半期":"Q3","月表示":"2024/10","FY四半期":"FY24-Q3"},{"商品群":"周邊商品","管道":"KOL","月":"202410","売上":78749,"年度":"FY24","四半期":"Q3","月表示":"2024/10","FY四半期":"FY24-Q3"},{"商品群":"周邊商品","管道":"EC","月":"202410","売上":161053,"年度":"FY24","四半期":"Q3","月表示":"2024/10","FY四半期":"FY24-Q3"},{"商品群":"周邊商品","管道":"其他","月":"202410","売上":2094,"年度":"FY24","四半期":"Q3","月表示":"2024/10","FY四半期":"FY24-Q3"},{"商品群":"Mirafeel","管道":"WEB","月":"202410","売上":25072,"年度":"FY24","四半期":"Q3","月表示":"2024/10","FY四半期":"FY24-Q3"},{"商品群":"Mirafeel","管道":"TM","月":"202410","売上":0,"年度":"FY24","四半期":"Q3","月表示":"2024/10","FY四半期":"FY24-Q3"},{"商品群":"Mirafeel","管道":"KOL","月":"202410","売上":0,"年度":"FY24","四半期":"Q3","月表示":"2024/10","FY四半期":"FY24-Q3"},{"商品群":"Mirafeel","管道":"EC","月":"202410","売上":0,"年度":"FY24","四半期":"Q3","月表示":"2024/10","FY四半期":"FY24-Q3"},{"商品群":"Mirafeel","管道":"其他","月":"202410","売上":0,"年度":"FY24","四半期":"Q3","月表示":"2024/10","FY四半期":"FY24-Q3"},{"商品群":"學習商品","管道":"WEB","月":"202411","売上":1718276,"年度":"FY24","四半期":"Q3","月表示":"2024/11","FY四半期":"FY24-Q3"},{"商品群":"學習商品","管道":"TM","月":"202411","売上":1631227,"年度":"FY24","四半期":"Q3","月表示":"2024/11","FY四半期":"FY24-Q3"},{"商品群":"學習商品","管道":"KOL","月":"202411","売上":690229,"年度":"FY24","四半期":"Q3","月表示":"2024/11","FY四半期":"FY24-Q3"},{"商品群":"學習商品","管道":"EC","月":"202411","売上":757984,"年度":"FY24","四半期":"Q3","月表示":"2024/11","FY四半期":"FY24-Q3"},{"商品群":"學習商品","管道":"其他","月":"202411","売上":6475,"年度":"FY24","四半期":"Q3","月表示":"2024/11","FY四半期":"FY24-Q3"},{"商品群":"周邊商品","管道":"WEB","月":"202411","売上":262270,"年度":"FY24","四半期":"Q3","月表示":"2024/11","FY四半期":"FY24-Q3"},{"商品群":"周邊商品","管道":"TM","月":"202411","売上":83809,"年度":"FY24","四半期":"Q3","月表示":"2024/11","FY四半期":"FY24-Q3"},{"商品群":"周邊商品","管道":"KOL","月":"202411","売上":21782,"年度":"FY24","四半期":"Q3","月表示":"2024/11","FY四半期":"FY24-Q3"},{"商品群":"周邊商品","管道":"EC","月":"202411","売上":86909,"年度":"FY24","四半期":"Q3","月表示":"2024/11","FY四半期":"FY24-Q3"},{"商品群":"周邊商品","管道":"其他","月":"202411","売上":381,"年度":"FY24","四半期":"Q3","月表示":"2024/11","FY四半期":"FY24-Q3"},{"商品群":"Mirafeel","管道":"WEB","月":"202411","売上":34582,"年度":"FY24","四半期":"Q3","月表示":"2024/11","FY四半期":"FY24-Q3"},{"商品群":"Mirafeel","管道":"TM","月":"202411","売上":4572,"年度":"FY24","四半期":"Q3","月表示":"2024/11","FY四半期":"FY24-Q3"},{"商品群":"Mirafeel","管道":"KOL","月":"202411","売上":0,"年度":"FY24","四半期":"Q3","月表示":"2024/11","FY四半期":"FY24-Q3"},{"商品群":"Mirafeel","管道":"EC","月":"202411","売上":0,"年度":"FY24","四半期":"Q3","月表示":"2024/11","FY四半期":"FY24-Q3"},{"商品群":"Mirafeel","管道":"其他","月":"202411","売上":0,"年度":"FY24","四半期":"Q3","月表示":"2024/11","FY四半期":"FY24-Q3"},{"商品群":"學習商品","管道":"WEB","月":"202412","売上":1427399,"年度":"FY24","四半期":"Q3","月表示":"2024/12","FY四半期":"FY24-Q3"},{"商品群":"學習商品","管道":"TM","月":"202412","売上":1936515,"年度":"FY24","四半期":"Q3","月表示":"2024/12","FY四半期":"FY24-Q3"},{"商品群":"學習商品","管道":"KOL","月":"202412","売上":1602099,"年度":"FY24","四半期":"Q3","月表示":"2024/12","FY四半期":"FY24-Q3"},{"商品群":"學習商品","管道":"EC","月":"202412","売上":333373,"年度":"FY24","四半期":"Q3","月表示":"2024/12","FY四半期":"FY24-Q3"},{"商品群":"學習商品","管道":"其他","月":"202412","売上":286058,"年度":"FY24","四半期":"Q3","月表示":"2024/12","FY四半期":"FY24-Q3"},{"商品群":"周邊商品","管道":"WEB","月":"202412","売上":580778,"年度":"FY24","四半期":"Q3","月表示":"2024/12","FY四半期":"FY24-Q3"},{"商品群":"周邊商品","管道":"TM","月":"202412","売上":94283,"年度":"FY24","四半期":"Q3","月表示":"2024/12","FY四半期":"FY24-Q3"},{"商品群":"周邊商品","管道":"KOL","月":"202412","売上":22064,"年度":"FY24","四半期":"Q3","月表示":"2024/12","FY四半期":"FY24-Q3"},{"商品群":"周邊商品","管道":"EC","月":"202412","売上":195403,"年度":"FY24","四半期":"Q3","月表示":"2024/12","FY四半期":"FY24-Q3"},{"商品群":"周邊商品","管道":"其他","月":"202412","売上":236680,"年度":"FY24","四半期":"Q3","月表示":"2024/12","FY四半期":"FY24-Q3"},{"商品群":"Mirafeel","管道":"WEB","月":"202412","売上":110441,"年度":"FY24","四半期":"Q3","月表示":"2024/12","FY四半期":"FY24-Q3"},{"商品群":"Mirafeel","管道":"TM","月":"202412","売上":50615,"年度":"FY24","四半期":"Q3","月表示":"2024/12","FY四半期":"FY24-Q3"},{"商品群":"Mirafeel","管道":"KOL","月":"202412","売上":5714,"年度":"FY24","四半期":"Q3","月表示":"2024/12","FY四半期":"FY24-Q3"},{"商品群":"Mirafeel","管道":"EC","月":"202412","売上":0,"年度":"FY24","四半期":"Q3","月表示":"2024/12","FY四半期":"FY24-Q3"},{"商品群":"Mirafeel","管道":"其他","月":"202412","売上":37329,"年度":"FY24","四半期":"Q3","月表示":"2024/12","FY四半期":"FY24-Q3"},{"商品群":"學習商品","管道":"WEB","月":"202501","売上":518088,"年度":"FY24","四半期":"Q4","月表示":"2025/01","FY四半期":"FY24-Q4"},{"商品群":"學習商品","管道":"TM","月":"202501","売上":1107170,"年度":"FY24","四半期":"Q4","月表示":"2025/01","FY四半期":"FY24-Q4"},{"商品群":"學習商品","管道":"KOL","月":"202501","売上":484913,"年度":"FY24","四半期":"Q4","月表示":"2025/01","FY四半期":"FY24-Q4"},{"商品群":"學習商品","管道":"EC","月":"202501","売上":244034,"年度":"FY24","四半期":"Q4","月表示":"2025/01","FY四半期":"FY24-Q4"},{"商品群":"學習商品","管道":"其他","月":"202501","売上":0,"年度":"FY24","四半期":"Q4","月表示":"2025/01","FY四半期":"FY24-Q4"},{"商品群":"周邊商品","管道":"WEB","月":"202501","売上":409781,"年度":"FY24","四半期":"Q4","月表示":"2025/01","FY四半期":"FY24-Q4"},{"商品群":"周邊商品","管道":"TM","月":"202501","売上":139889,"年度":"FY24","四半期":"Q4","月表示":"2025/01","FY四半期":"FY24-Q4"},{"商品群":"周邊商品","管道":"KOL","月":"202501","売上":33963,"年度":"FY24","四半期":"Q4","月表示":"2025/01","FY四半期":"FY24-Q4"},{"商品群":"周邊商品","管道":"EC","月":"202501","売上":188506,"年度":"FY24","四半期":"Q4","月表示":"2025/01","FY四半期":"FY24-Q4"},{"商品群":"周邊商品","管道":"其他","月":"202501","売上":3046,"年度":"FY24","四半期":"Q4","月表示":"2025/01","FY四半期":"FY24-Q4"},{"商品群":"Mirafeel","管道":"WEB","月":"202501","売上":16332,"年度":"FY24","四半期":"Q4","月表示":"2025/01","FY四半期":"FY24-Q4"},{"商品群":"Mirafeel","管道":"TM","月":"202501","売上":18660,"年度":"FY24","四半期":"Q4","月表示":"2025/01","FY四半期":"FY24-Q4"},{"商品群":"Mirafeel","管道":"KOL","月":"202501","売上":0,"年度":"FY24","四半期":"Q4","月表示":"2025/01","FY四半期":"FY24-Q4"},{"商品群":"Mirafeel","管道":"EC","月":"202501","売上":0,"年度":"FY24","四半期":"Q4","月表示":"2025/01","FY四半期":"FY24-Q4"},{"商品群":"Mirafeel","管道":"其他","月":"202501","売上":0,"年度":"FY24","四半期":"Q4","月表示":"2025/01","FY四半期":"FY24-Q4"},{"商品群":"學習商品","管道":"WEB","月":"202502","売上":994553,"年度":"FY24","四半期":"Q4","月表示":"2025/02","FY四半期":"FY24-Q4"},{"商品群":"學習商品","管道":"TM","月":"202502","売上":1708760,"年度":"FY24","四半期":"Q4","月表示":"2025/02","FY四半期":"FY24-Q4"},{"商品群":"學習商品","管道":"KOL","月":"202502","売上":586796,"年度":"FY24","四半期":"Q4","月表示":"2025/02","FY四半期":"FY24-Q4"},{"商品群":"學習商品","管道":"EC","月":"202502","売上":430310,"年度":"FY24","四半期":"Q4","月表示":"2025/02","FY四半期":"FY24-Q4"},{"商品群":"學習商品","管道":"其他","月":"202502","売上":4571,"年度":"FY24","四半期":"Q4","月表示":"2025/02","FY四半期":"FY24-Q4"},{"商品群":"周邊商品","管道":"WEB","月":"202502","売上":411847,"年度":"FY24","四半期":"Q4","月表示":"2025/02","FY四半期":"FY24-Q4"},{"商品群":"周邊商品","管道":"TM","月":"202502","売上":109511,"年度":"FY24","四半期":"Q4","月表示":"2025/02","FY四半期":"FY24-Q4"},{"商品群":"周邊商品","管道":"KOL","月":"202502","売上":35968,"年度":"FY24","四半期":"Q4","月表示":"2025/02","FY四半期":"FY24-Q4"},{"商品群":"周邊商品","管道":"EC","月":"202502","売上":226197,"年度":"FY24","四半期":"Q4","月表示":"2025/02","FY四半期":"FY24-Q4"},{"商品群":"周邊商品","管道":"其他","月":"202502","売上":0,"年度":"FY24","四半期":"Q4","月表示":"2025/02","FY四半期":"FY24-Q4"},{"商品群":"Mirafeel","管道":"WEB","月":"202502","売上":67910,"年度":"FY24","四半期":"Q4","月表示":"2025/02","FY四半期":"FY24-Q4"},{"商品群":"Mirafeel","管道":"TM","月":"202502","売上":47959,"年度":"FY24","四半期":"Q4","月表示":"2025/02","FY四半期":"FY24-Q4"},{"商品群":"Mirafeel","管道":"KOL","月":"202502","売上":27475,"年度":"FY24","四半期":"Q4","月表示":"2025/02","FY四半期":"FY24-Q4"},{"商品群":"Mirafeel","管道":"EC","月":"202502","売上":0,"年度":"FY24","四半期":"Q4","月表示":"2025/02","FY四半期":"FY24-Q4"},{"商品群":"Mirafeel","管道":"其他","月":"202502","売上":0,"年度":"FY24","四半期":"Q4","月表示":"2025/02","FY四半期":"FY24-Q4"},{"商品群":"學習商品","管道":"WEB","月":"202503","売上":560383,"年度":"FY24","四半期":"Q4","月表示":"2025/03","FY四半期":"FY24-Q4"},{"商品群":"學習商品","管道":"TM","月":"202503","売上":1595564,"年度":"FY24","四半期":"Q4","月表示":"2025/03","FY四半期":"FY24-Q4"},{"商品群":"學習商品","管道":"KOL","月":"202503","売上":571449,"年度":"FY24","四半期":"Q4","月表示":"2025/03","FY四半期":"FY24-Q4"},{"商品群":"學習商品","管道":"EC","月":"202503","売上":442400,"年度":"FY24","四半期":"Q4","月表示":"2025/03","FY四半期":"FY24-Q4"},{"商品群":"學習商品","管道":"其他","月":"202503","売上":176284,"年度":"FY24","四半期":"Q4","月表示":"2025/03","FY四半期":"FY24-Q4"},{"商品群":"周邊商品","管道":"WEB","月":"202503","売上":338001,"年度":"FY24","四半期":"Q4","月表示":"2025/03","FY四半期":"FY24-Q4"},{"商品群":"周邊商品","管道":"TM","月":"202503","売上":130469,"年度":"FY24","四半期":"Q4","月表示":"2025/03","FY四半期":"FY24-Q4"},{"商品群":"周邊商品","管道":"KOL","月":"202503","売上":21501,"年度":"FY24","四半期":"Q4","月表示":"2025/03","FY四半期":"FY24-Q4"},{"商品群":"周邊商品","管道":"EC","月":"202503","売上":174241,"年度":"FY24","四半期":"Q4","月表示":"2025/03","FY四半期":"FY24-Q4"},{"商品群":"周邊商品","管道":"其他","月":"202503","売上":1523,"年度":"FY24","四半期":"Q4","月表示":"2025/03","FY四半期":"FY24-Q4"},{"商品群":"Mirafeel","管道":"WEB","月":"202503","売上":87394,"年度":"FY24","四半期":"Q4","月表示":"2025/03","FY四半期":"FY24-Q4"},{"商品群":"Mirafeel","管道":"TM","月":"202503","売上":46346,"年度":"FY24","四半期":"Q4","月表示":"2025/03","FY四半期":"FY24-Q4"},{"商品群":"Mirafeel","管道":"KOL","月":"202503","売上":0,"年度":"FY24","四半期":"Q4","月表示":"2025/03","FY四半期":"FY24-Q4"},{"商品群":"Mirafeel","管道":"EC","月":"202503","売上":0,"年度":"FY24","四半期":"Q4","月表示":"2025/03","FY四半期":"FY24-Q4"},{"商品群":"Mirafeel","管道":"其他","月":"202503","売上":1500,"年度":"FY24","四半期":"Q4","月表示":"2025/03","FY四半期":"FY24-Q4"},{"商品群":"學習商品","管道":"WEB","月":"202504","売上":667228,"年度":"FY25","四半期":"Q1","月表示":"2025/04","FY四半期":"FY25-Q1"},{"商品群":"學習商品","管道":"TM","月":"202504","売上":1408641,"年度":"FY25","四半期":"Q1","月表示":"2025/04","FY四半期":"FY25-Q1"},{"商品群":"學習商品","管道":"KOL","月":"202504","売上":157214,"年度":"FY25","四半期":"Q1","月表示":"2025/04","FY四半期":"FY25-Q1"},{"商品群":"學習商品","管道":"EC","月":"202504","売上":295051,"年度":"FY25","四半期":"Q1","月表示":"2025/04","FY四半期":"FY25-Q1"},{"商品群":"學習商品","管道":"其他","月":"202504","売上":22948,"年度":"FY25","四半期":"Q1","月表示":"2025/04","FY四半期":"FY25-Q1"},{"商品群":"周邊商品","管道":"WEB","月":"202504","売上":254777,"年度":"FY25","四半期":"Q1","月表示":"2025/04","FY四半期":"FY25-Q1"},{"商品群":"周邊商品","管道":"TM","月":"202504","売上":106149,"年度":"FY25","四半期":"Q1","月表示":"2025/04","FY四半期":"FY25-Q1"},{"商品群":"周邊商品","管道":"KOL","月":"202504","売上":7231,"年度":"FY25","四半期":"Q1","月表示":"2025/04","FY四半期":"FY25-Q1"},{"商品群":"周邊商品","管道":"EC","月":"202504","売上":694551,"年度":"FY25","四半期":"Q1","月表示":"2025/04","FY四半期":"FY25-Q1"},{"商品群":"周邊商品","管道":"其他","月":"202504","売上":0,"年度":"FY25","四半期":"Q1","月表示":"2025/04","FY四半期":"FY25-Q1"},{"商品群":"Mirafeel","管道":"WEB","月":"202504","売上":78866,"年度":"FY25","四半期":"Q1","月表示":"2025/04","FY四半期":"FY25-Q1"},{"商品群":"Mirafeel","管道":"TM","月":"202504","売上":90647,"年度":"FY25","四半期":"Q1","月表示":"2025/04","FY四半期":"FY25-Q1"},{"商品群":"Mirafeel","管道":"KOL","月":"202504","売上":0,"年度":"FY25","四半期":"Q1","月表示":"2025/04","FY四半期":"FY25-Q1"},{"商品群":"Mirafeel","管道":"EC","月":"202504","売上":0,"年度":"FY25","四半期":"Q1","月表示":"2025/04","FY四半期":"FY25-Q1"},{"商品群":"Mirafeel","管道":"其他","月":"202504","売上":0,"年度":"FY25","四半期":"Q1","月表示":"2025/04","FY四半期":"FY25-Q1"},{"商品群":"學習商品","管道":"WEB","月":"202505","売上":1922249,"年度":"FY25","四半期":"Q1","月表示":"2025/05","FY四半期":"FY25-Q1"},{"商品群":"學習商品","管道":"TM","月":"202505","売上":1986598,"年度":"FY25","四半期":"Q1","月表示":"2025/05","FY四半期":"FY25-Q1"},{"商品群":"學習商品","管道":"KOL","月":"202505","売上":3462082,"年度":"FY25","四半期":"Q1","月表示":"2025/05","FY四半期":"FY25-Q1"},{"商品群":"學習商品","管道":"EC","月":"202505","売上":417477,"年度":"FY25","四半期":"Q1","月表示":"2025/05","FY四半期":"FY25-Q1"},{"商品群":"學習商品","管道":"其他","月":"202505","売上":5998,"年度":"FY25","四半期":"Q1","月表示":"2025/05","FY四半期":"FY25-Q1"},{"商品群":"周邊商品","管道":"WEB","月":"202505","売上":411621,"年度":"FY25","四半期":"Q1","月表示":"2025/05","FY四半期":"FY25-Q1"},{"商品群":"周邊商品","管道":"TM","月":"202505","売上":166374,"年度":"FY25","四半期":"Q1","月表示":"2025/05","FY四半期":"FY25-Q1"},{"商品群":"周邊商品","管道":"KOL","月":"202505","売上":87065,"年度":"FY25","四半期":"Q1","月表示":"2025/05","FY四半期":"FY25-Q1"},{"商品群":"周邊商品","管道":"EC","月":"202505","売上":202795,"年度":"FY25","四半期":"Q1","月表示":"2025/05","FY四半期":"FY25-Q1"},{"商品群":"周邊商品","管道":"其他","月":"202505","売上":569,"年度":"FY25","四半期":"Q1","月表示":"2025/05","FY四半期":"FY25-Q1"},{"商品群":"Mirafeel","管道":"WEB","月":"202505","売上":59952,"年度":"FY25","四半期":"Q1","月表示":"2025/05","FY四半期":"FY25-Q1"},{"商品群":"Mirafeel","管道":"TM","月":"202505","売上":97909,"年度":"FY25","四半期":"Q1","月表示":"2025/05","FY四半期":"FY25-Q1"},{"商品群":"Mirafeel","管道":"KOL","月":"202505","売上":25619,"年度":"FY25","四半期":"Q1","月表示":"2025/05","FY四半期":"FY25-Q1"},{"商品群":"Mirafeel","管道":"EC","月":"202505","売上":0,"年度":"FY25","四半期":"Q1","月表示":"2025/05","FY四半期":"FY25-Q1"},{"商品群":"Mirafeel","管道":"其他","月":"202505","売上":0,"年度":"FY25","四半期":"Q1","月表示":"2025/05","FY四半期":"FY25-Q1"},{"商品群":"學習商品","管道":"WEB","月":"202506","売上":941080,"年度":"FY25","四半期":"Q1","月表示":"2025/06","FY四半期":"FY25-Q1"},{"商品群":"學習商品","管道":"TM","月":"202506","売上":1625380,"年度":"FY25","四半期":"Q1","月表示":"2025/06","FY四半期":"FY25-Q1"},{"商品群":"學習商品","管道":"KOL","月":"202506","売上":303718,"年度":"FY25","四半期":"Q1","月表示":"2025/06","FY四半期":"FY25-Q1"},{"商品群":"學習商品","管道":"EC","月":"202506","売上":561435,"年度":"FY25","四半期":"Q1","月表示":"2025/06","FY四半期":"FY25-Q1"},{"商品群":"學習商品","管道":"其他","月":"202506","売上":10760,"年度":"FY25","四半期":"Q1","月表示":"2025/06","FY四半期":"FY25-Q1"},{"商品群":"周邊商品","管道":"WEB","月":"202506","売上":357153,"年度":"FY25","四半期":"Q1","月表示":"2025/06","FY四半期":"FY25-Q1"},{"商品群":"周邊商品","管道":"TM","月":"202506","売上":104536,"年度":"FY25","四半期":"Q1","月表示":"2025/06","FY四半期":"FY25-Q1"},{"商品群":"周邊商品","管道":"KOL","月":"202506","売上":13796,"年度":"FY25","四半期":"Q1","月表示":"2025/06","FY四半期":"FY25-Q1"},{"商品群":"周邊商品","管道":"EC","月":"202506","売上":185340,"年度":"FY25","四半期":"Q1","月表示":"2025/06","FY四半期":"FY25-Q1"},{"商品群":"周邊商品","管道":"其他","月":"202506","売上":0,"年度":"FY25","四半期":"Q1","月表示":"2025/06","FY四半期":"FY25-Q1"},{"商品群":"Mirafeel","管道":"WEB","月":"202506","売上":61752,"年度":"FY25","四半期":"Q1","月表示":"2025/06","FY四半期":"FY25-Q1"},{"商品群":"Mirafeel","管道":"TM","月":"202506","売上":71090,"年度":"FY25","四半期":"Q1","月表示":"2025/06","FY四半期":"FY25-Q1"},{"商品群":"Mirafeel","管道":"KOL","月":"202506","売上":28000,"年度":"FY25","四半期":"Q1","月表示":"2025/06","FY四半期":"FY25-Q1"},{"商品群":"Mirafeel","管道":"EC","月":"202506","売上":0,"年度":"FY25","四半期":"Q1","月表示":"2025/06","FY四半期":"FY25-Q1"},{"商品群":"Mirafeel","管道":"其他","月":"202506","売上":0,"年度":"FY25","四半期":"Q1","月表示":"2025/06","FY四半期":"FY25-Q1"},{"商品群":"學習商品","管道":"WEB","月":"202507","売上":922608,"年度":"FY25","四半期":"Q2","月表示":"2025/07","FY四半期":"FY25-Q2"},{"商品群":"學習商品","管道":"TM","月":"202507","売上":1418819,"年度":"FY25","四半期":"Q2","月表示":"2025/07","FY四半期":"FY25-Q2"},{"商品群":"學習商品","管道":"KOL","月":"202507","売上":256222,"年度":"FY25","四半期":"Q2","月表示":"2025/07","FY四半期":"FY25-Q2"},{"商品群":"學習商品","管道":"EC","月":"202507","売上":479094,"年度":"FY25","四半期":"Q2","月表示":"2025/07","FY四半期":"FY25-Q2"},{"商品群":"學習商品","管道":"其他","月":"202507","売上":8188,"年度":"FY25","四半期":"Q2","月表示":"2025/07","FY四半期":"FY25-Q2"},{"商品群":"周邊商品","管道":"WEB","月":"202507","売上":357160,"年度":"FY25","四半期":"Q2","月表示":"2025/07","FY四半期":"FY25-Q2"},{"商品群":"周邊商品","管道":"TM","月":"202507","売上":48263,"年度":"FY25","四半期":"Q2","月表示":"2025/07","FY四半期":"FY25-Q2"},{"商品群":"周邊商品","管道":"KOL","月":"202507","売上":14180,"年度":"FY25","四半期":"Q2","月表示":"2025/07","FY四半期":"FY25-Q2"},{"商品群":"周邊商品","管道":"EC","月":"202507","売上":205061,"年度":"FY25","四半期":"Q2","月表示":"2025/07","FY四半期":"FY25-Q2"},{"商品群":"周邊商品","管道":"其他","月":"202507","売上":0,"年度":"FY25","四半期":"Q2","月表示":"2025/07","FY四半期":"FY25-Q2"},{"商品群":"Mirafeel","管道":"WEB","月":"202507","売上":72190,"年度":"FY25","四半期":"Q2","月表示":"2025/07","FY四半期":"FY25-Q2"},{"商品群":"Mirafeel","管道":"TM","月":"202507","売上":55742,"年度":"FY25","四半期":"Q2","月表示":"2025/07","FY四半期":"FY25-Q2"},{"商品群":"Mirafeel","管道":"KOL","月":"202507","売上":39000,"年度":"FY25","四半期":"Q2","月表示":"2025/07","FY四半期":"FY25-Q2"},{"商品群":"Mirafeel","管道":"EC","月":"202507","売上":0,"年度":"FY25","四半期":"Q2","月表示":"2025/07","FY四半期":"FY25-Q2"},{"商品群":"Mirafeel","管道":"其他","月":"202507","売上":0,"年度":"FY25","四半期":"Q2","月表示":"2025/07","FY四半期":"FY25-Q2"},{"商品群":"學習商品","管道":"WEB","月":"202508","売上":920975,"年度":"FY25","四半期":"Q2","月表示":"2025/08","FY四半期":"FY25-Q2"},{"商品群":"學習商品","管道":"TM","月":"202508","売上":1477046,"年度":"FY25","四半期":"Q2","月表示":"2025/08","FY四半期":"FY25-Q2"},{"商品群":"學習商品","管道":"KOL","月":"202508","売上":637549,"年度":"FY25","四半期":"Q2","月表示":"2025/08","FY四半期":"FY25-Q2"},{"商品群":"學習商品","管道":"EC","月":"202508","売上":390971,"年度":"FY25","四半期":"Q2","月表示":"2025/08","FY四半期":"FY25-Q2"},{"商品群":"學習商品","管道":"其他","月":"202508","売上":322955,"年度":"FY25","四半期":"Q2","月表示":"2025/08","FY四半期":"FY25-Q2"},{"商品群":"周邊商品","管道":"WEB","月":"202508","売上":428243,"年度":"FY25","四半期":"Q2","月表示":"2025/08","FY四半期":"FY25-Q2"},{"商品群":"周邊商品","管道":"TM","月":"202508","売上":69384,"年度":"FY25","四半期":"Q2","月表示":"2025/08","FY四半期":"FY25-Q2"},{"商品群":"周邊商品","管道":"KOL","月":"202508","売上":23217,"年度":"FY25","四半期":"Q2","月表示":"2025/08","FY四半期":"FY25-Q2"},{"商品群":"周邊商品","管道":"EC","月":"202508","売上":325219,"年度":"FY25","四半期":"Q2","月表示":"2025/08","FY四半期":"FY25-Q2"},{"商品群":"周邊商品","管道":"其他","月":"202508","売上":0,"年度":"FY25","四半期":"Q2","月表示":"2025/08","FY四半期":"FY25-Q2"},{"商品群":"Mirafeel","管道":"WEB","月":"202508","売上":125428,"年度":"FY25","四半期":"Q2","月表示":"2025/08","FY四半期":"FY25-Q2"},{"商品群":"Mirafeel","管道":"TM","月":"202508","売上":30195,"年度":"FY25","四半期":"Q2","月表示":"2025/08","FY四半期":"FY25-Q2"},{"商品群":"Mirafeel","管道":"KOL","月":"202508","売上":143809,"年度":"FY25","四半期":"Q2","月表示":"2025/08","FY四半期":"FY25-Q2"},{"商品群":"Mirafeel","管道":"EC","月":"202508","売上":0,"年度":"FY25","四半期":"Q2","月表示":"2025/08","FY四半期":"FY25-Q2"},{"商品群":"Mirafeel","管道":"其他","月":"202508","売上":0,"年度":"FY25","四半期":"Q2","月表示":"2025/08","FY四半期":"FY25-Q2"},{"商品群":"學習商品","管道":"WEB","月":"202509","売上":520558,"年度":"FY25","四半期":"Q2","月表示":"2025/09","FY四半期":"FY25-Q2"},{"商品群":"學習商品","管道":"TM","月":"202509","売上":1232943,"年度":"FY25","四半期":"Q2","月表示":"2025/09","FY四半期":"FY25-Q2"},{"商品群":"學習商品","管道":"KOL","月":"202509","売上":264983,"年度":"FY25","四半期":"Q2","月表示":"2025/09","FY四半期":"FY25-Q2"},{"商品群":"學習商品","管道":"EC","月":"202509","売上":272899,"年度":"FY25","四半期":"Q2","月表示":"2025/09","FY四半期":"FY25-Q2"},{"商品群":"學習商品","管道":"其他","月":"202509","売上":0,"年度":"FY25","四半期":"Q2","月表示":"2025/09","FY四半期":"FY25-Q2"},{"商品群":"周邊商品","管道":"WEB","月":"202509","売上":349070,"年度":"FY25","四半期":"Q2","月表示":"2025/09","FY四半期":"FY25-Q2"},{"商品群":"周邊商品","管道":"TM","月":"202509","売上":91069,"年度":"FY25","四半期":"Q2","月表示":"2025/09","FY四半期":"FY25-Q2"},{"商品群":"周邊商品","管道":"KOL","月":"202509","売上":16364,"年度":"FY25","四半期":"Q2","月表示":"2025/09","FY四半期":"FY25-Q2"},{"商品群":"周邊商品","管道":"EC","月":"202509","売上":305047,"年度":"FY25","四半期":"Q2","月表示":"2025/09","FY四半期":"FY25-Q2"},{"商品群":"周邊商品","管道":"其他","月":"202509","売上":0,"年度":"FY25","四半期":"Q2","月表示":"2025/09","FY四半期":"FY25-Q2"},{"商品群":"Mirafeel","管道":"WEB","月":"202509","売上":171076,"年度":"FY25","四半期":"Q2","月表示":"2025/09","FY四半期":"FY25-Q2"},{"商品群":"Mirafeel","管道":"TM","月":"202509","売上":19638,"年度":"FY25","四半期":"Q2","月表示":"2025/09","FY四半期":"FY25-Q2"},{"商品群":"Mirafeel","管道":"KOL","月":"202509","売上":18666,"年度":"FY25","四半期":"Q2","月表示":"2025/09","FY四半期":"FY25-Q2"},{"商品群":"Mirafeel","管道":"EC","月":"202509","売上":0,"年度":"FY25","四半期":"Q2","月表示":"2025/09","FY四半期":"FY25-Q2"},{"商品群":"Mirafeel","管道":"其他","月":"202509","売上":0,"年度":"FY25","四半期":"Q2","月表示":"2025/09","FY四半期":"FY25-Q2"},{"商品群":"學習商品","管道":"WEB","月":"202510","売上":1567009,"年度":"FY25","四半期":"Q3","月表示":"2025/10","FY四半期":"FY25-Q3"},{"商品群":"學習商品","管道":"TM","月":"202510","売上":1861481,"年度":"FY25","四半期":"Q3","月表示":"2025/10","FY四半期":"FY25-Q3"},{"商品群":"學習商品","管道":"KOL","月":"202510","売上":1700433,"年度":"FY25","四半期":"Q3","月表示":"2025/10","FY四半期":"FY25-Q3"},{"商品群":"學習商品","管道":"EC","月":"202510","売上":446363,"年度":"FY25","四半期":"Q3","月表示":"2025/10","FY四半期":"FY25-Q3"},{"商品群":"學習商品","管道":"其他","月":"202510","売上":0,"年度":"FY25","四半期":"Q3","月表示":"2025/10","FY四半期":"FY25-Q3"},{"商品群":"周邊商品","管道":"WEB","月":"202510","売上":478724,"年度":"FY25","四半期":"Q3","月表示":"2025/10","FY四半期":"FY25-Q3"},{"商品群":"周邊商品","管道":"TM","月":"202510","売上":145358,"年度":"FY25","四半期":"Q3","月表示":"2025/10","FY四半期":"FY25-Q3"},{"商品群":"周邊商品","管道":"KOL","月":"202510","売上":51180,"年度":"FY25","四半期":"Q3","月表示":"2025/10","FY四半期":"FY25-Q3"},{"商品群":"周邊商品","管道":"EC","月":"202510","売上":375142,"年度":"FY25","四半期":"Q3","月表示":"2025/10","FY四半期":"FY25-Q3"},{"商品群":"周邊商品","管道":"其他","月":"202510","売上":0,"年度":"FY25","四半期":"Q3","月表示":"2025/10","FY四半期":"FY25-Q3"},{"商品群":"Mirafeel","管道":"WEB","月":"202510","売上":102095,"年度":"FY25","四半期":"Q3","月表示":"2025/10","FY四半期":"FY25-Q3"},{"商品群":"Mirafeel","管道":"TM","月":"202510","売上":30033,"年度":"FY25","四半期":"Q3","月表示":"2025/10","FY四半期":"FY25-Q3"},{"商品群":"Mirafeel","管道":"KOL","月":"202510","売上":40523,"年度":"FY25","四半期":"Q3","月表示":"2025/10","FY四半期":"FY25-Q3"},{"商品群":"Mirafeel","管道":"EC","月":"202510","売上":0,"年度":"FY25","四半期":"Q3","月表示":"2025/10","FY四半期":"FY25-Q3"},{"商品群":"Mirafeel","管道":"其他","月":"202510","売上":0,"年度":"FY25","四半期":"Q3","月表示":"2025/10","FY四半期":"FY25-Q3"},{"商品群":"學習商品","管道":"WEB","月":"202511","売上":1533307,"年度":"FY25","四半期":"Q3","月表示":"2025/11","FY四半期":"FY25-Q3"},{"商品群":"學習商品","管道":"TM","月":"202511","売上":1584110,"年度":"FY25","四半期":"Q3","月表示":"2025/11","FY四半期":"FY25-Q3"},{"商品群":"學習商品","管道":"KOL","月":"202511","売上":977713,"年度":"FY25","四半期":"Q3","月表示":"2025/11","FY四半期":"FY25-Q3"},{"商品群":"學習商品","管道":"EC","月":"202511","売上":582445,"年度":"FY25","四半期":"Q3","月表示":"2025/11","FY四半期":"FY25-Q3"},{"商品群":"學習商品","管道":"其他","月":"202511","売上":0,"年度":"FY25","四半期":"Q3","月表示":"2025/11","FY四半期":"FY25-Q3"},{"商品群":"周邊商品","管道":"WEB","月":"202511","売上":559068,"年度":"FY25","四半期":"Q3","月表示":"2025/11","FY四半期":"FY25-Q3"},{"商品群":"周邊商品","管道":"TM","月":"202511","売上":89668,"年度":"FY25","四半期":"Q3","月表示":"2025/11","FY四半期":"FY25-Q3"},{"商品群":"周邊商品","管道":"KOL","月":"202511","売上":14080,"年度":"FY25","四半期":"Q3","月表示":"2025/11","FY四半期":"FY25-Q3"},{"商品群":"周邊商品","管道":"EC","月":"202511","売上":363892,"年度":"FY25","四半期":"Q3","月表示":"2025/11","FY四半期":"FY25-Q3"},{"商品群":"周邊商品","管道":"其他","月":"202511","売上":0,"年度":"FY25","四半期":"Q3","月表示":"2025/11","FY四半期":"FY25-Q3"},{"商品群":"Mirafeel","管道":"WEB","月":"202511","売上":173552,"年度":"FY25","四半期":"Q3","月表示":"2025/11","FY四半期":"FY25-Q3"},{"商品群":"Mirafeel","管道":"TM","月":"202511","売上":22133,"年度":"FY25","四半期":"Q3","月表示":"2025/11","FY四半期":"FY25-Q3"},{"商品群":"Mirafeel","管道":"KOL","月":"202511","売上":63714,"年度":"FY25","四半期":"Q3","月表示":"2025/11","FY四半期":"FY25-Q3"},{"商品群":"Mirafeel","管道":"EC","月":"202511","売上":0,"年度":"FY25","四半期":"Q3","月表示":"2025/11","FY四半期":"FY25-Q3"},{"商品群":"Mirafeel","管道":"其他","月":"202511","売上":0,"年度":"FY25","四半期":"Q3","月表示":"2025/11","FY四半期":"FY25-Q3"},{"商品群":"學習商品","管道":"WEB","月":"202512","売上":1196637,"年度":"FY25","四半期":"Q3","月表示":"2025/12","FY四半期":"FY25-Q3"},{"商品群":"學習商品","管道":"TM","月":"202512","売上":1532857,"年度":"FY25","四半期":"Q3","月表示":"2025/12","FY四半期":"FY25-Q3"},{"商品群":"學習商品","管道":"KOL","月":"202512","売上":87692,"年度":"FY25","四半期":"Q3","月表示":"2025/12","FY四半期":"FY25-Q3"},{"商品群":"學習商品","管道":"EC","月":"202512","売上":332327,"年度":"FY25","四半期":"Q3","月表示":"2025/12","FY四半期":"FY25-Q3"},{"商品群":"學習商品","管道":"其他","月":"202512","売上":0,"年度":"FY25","四半期":"Q3","月表示":"2025/12","FY四半期":"FY25-Q3"},{"商品群":"周邊商品","管道":"WEB","月":"202512","売上":485887,"年度":"FY25","四半期":"Q3","月表示":"2025/12","FY四半期":"FY25-Q3"},{"商品群":"周邊商品","管道":"TM","月":"202512","売上":81393,"年度":"FY25","四半期":"Q3","月表示":"2025/12","FY四半期":"FY25-Q3"},{"商品群":"周邊商品","管道":"KOL","月":"202512","売上":665,"年度":"FY25","四半期":"Q3","月表示":"2025/12","FY四半期":"FY25-Q3"},{"商品群":"周邊商品","管道":"EC","月":"202512","売上":175204,"年度":"FY25","四半期":"Q3","月表示":"2025/12","FY四半期":"FY25-Q3"},{"商品群":"周邊商品","管道":"其他","月":"202512","売上":0,"年度":"FY25","四半期":"Q3","月表示":"2025/12","FY四半期":"FY25-Q3"},{"商品群":"Mirafeel","管道":"WEB","月":"202512","売上":210680,"年度":"FY25","四半期":"Q3","月表示":"2025/12","FY四半期":"FY25-Q3"},{"商品群":"Mirafeel","管道":"TM","月":"202512","売上":38014,"年度":"FY25","四半期":"Q3","月表示":"2025/12","FY四半期":"FY25-Q3"},{"商品群":"Mirafeel","管道":"KOL","月":"202512","売上":16000,"年度":"FY25","四半期":"Q3","月表示":"2025/12","FY四半期":"FY25-Q3"},{"商品群":"Mirafeel","管道":"EC","月":"202512","売上":0,"年度":"FY25","四半期":"Q3","月表示":"2025/12","FY四半期":"FY25-Q3"},{"商品群":"Mirafeel","管道":"其他","月":"202512","売上":0,"年度":"FY25","四半期":"Q3","月表示":"2025/12","FY四半期":"FY25-Q3"},{"商品群":"學習商品","管道":"WEB","月":"202601","売上":1453487,"年度":"FY25","四半期":"Q4","月表示":"2026/01","FY四半期":"FY25-Q4"},{"商品群":"學習商品","管道":"TM","月":"202601","売上":1725249,"年度":"FY25","四半期":"Q4","月表示":"2026/01","FY四半期":"FY25-Q4"},{"商品群":"學習商品","管道":"KOL","月":"202601","売上":2089389,"年度":"FY25","四半期":"Q4","月表示":"2026/01","FY四半期":"FY25-Q4"},{"商品群":"學習商品","管道":"EC","月":"202601","売上":327185,"年度":"FY25","四半期":"Q4","月表示":"2026/01","FY四半期":"FY25-Q4"},{"商品群":"學習商品","管道":"其他","月":"202601","売上":0,"年度":"FY25","四半期":"Q4","月表示":"2026/01","FY四半期":"FY25-Q4"},{"商品群":"周邊商品","管道":"WEB","月":"202601","売上":292451,"年度":"FY25","四半期":"Q4","月表示":"2026/01","FY四半期":"FY25-Q4"},{"商品群":"周邊商品","管道":"TM","月":"202601","売上":97608,"年度":"FY25","四半期":"Q4","月表示":"2026/01","FY四半期":"FY25-Q4"},{"商品群":"周邊商品","管道":"KOL","月":"202601","売上":34727,"年度":"FY25","四半期":"Q4","月表示":"2026/01","FY四半期":"FY25-Q4"},{"商品群":"周邊商品","管道":"EC","月":"202601","売上":127779,"年度":"FY25","四半期":"Q4","月表示":"2026/01","FY四半期":"FY25-Q4"},{"商品群":"周邊商品","管道":"其他","月":"202601","売上":0,"年度":"FY25","四半期":"Q4","月表示":"2026/01","FY四半期":"FY25-Q4"},{"商品群":"Mirafeel","管道":"WEB","月":"202601","売上":147542,"年度":"FY25","四半期":"Q4","月表示":"2026/01","FY四半期":"FY25-Q4"},{"商品群":"Mirafeel","管道":"TM","月":"202601","売上":46066,"年度":"FY25","四半期":"Q4","月表示":"2026/01","FY四半期":"FY25-Q4"},{"商品群":"Mirafeel","管道":"KOL","月":"202601","売上":20000,"年度":"FY25","四半期":"Q4","月表示":"2026/01","FY四半期":"FY25-Q4"},{"商品群":"Mirafeel","管道":"EC","月":"202601","売上":0,"年度":"FY25","四半期":"Q4","月表示":"2026/01","FY四半期":"FY25-Q4"},{"商品群":"Mirafeel","管道":"其他","月":"202601","売上":0,"年度":"FY25","四半期":"Q4","月表示":"2026/01","FY四半期":"FY25-Q4"},{"商品群":"學習商品","管道":"WEB","月":"202602","売上":1241246,"年度":"FY25","四半期":"Q4","月表示":"2026/02","FY四半期":"FY25-Q4"},{"商品群":"學習商品","管道":"TM","月":"202602","売上":1042802,"年度":"FY25","四半期":"Q4","月表示":"2026/02","FY四半期":"FY25-Q4"},{"商品群":"學習商品","管道":"KOL","月":"202602","売上":270694,"年度":"FY25","四半期":"Q4","月表示":"2026/02","FY四半期":"FY25-Q4"},{"商品群":"學習商品","管道":"EC","月":"202602","売上":480841,"年度":"FY25","四半期":"Q4","月表示":"2026/02","FY四半期":"FY25-Q4"},{"商品群":"學習商品","管道":"其他","月":"202602","売上":234643,"年度":"FY25","四半期":"Q4","月表示":"2026/02","FY四半期":"FY25-Q4"},{"商品群":"周邊商品","管道":"WEB","月":"202602","売上":349168,"年度":"FY25","四半期":"Q4","月表示":"2026/02","FY四半期":"FY25-Q4"},{"商品群":"周邊商品","管道":"TM","月":"202602","売上":48158,"年度":"FY25","四半期":"Q4","月表示":"2026/02","FY四半期":"FY25-Q4"},{"商品群":"周邊商品","管道":"KOL","月":"202602","売上":3329,"年度":"FY25","四半期":"Q4","月表示":"2026/02","FY四半期":"FY25-Q4"},{"商品群":"周邊商品","管道":"EC","月":"202602","売上":121949,"年度":"FY25","四半期":"Q4","月表示":"2026/02","FY四半期":"FY25-Q4"},{"商品群":"周邊商品","管道":"其他","月":"202602","売上":0,"年度":"FY25","四半期":"Q4","月表示":"2026/02","FY四半期":"FY25-Q4"},{"商品群":"Mirafeel","管道":"WEB","月":"202602","売上":144352,"年度":"FY25","四半期":"Q4","月表示":"2026/02","FY四半期":"FY25-Q4"},{"商品群":"Mirafeel","管道":"TM","月":"202602","売上":46638,"年度":"FY25","四半期":"Q4","月表示":"2026/02","FY四半期":"FY25-Q4"},{"商品群":"Mirafeel","管道":"KOL","月":"202602","売上":0,"年度":"FY25","四半期":"Q4","月表示":"2026/02","FY四半期":"FY25-Q4"},{"商品群":"Mirafeel","管道":"EC","月":"202602","売上":0,"年度":"FY25","四半期":"Q4","月表示":"2026/02","FY四半期":"FY25-Q4"},{"商品群":"Mirafeel","管道":"其他","月":"202602","売上":0,"年度":"FY25","四半期":"Q4","月表示":"2026/02","FY四半期":"FY25-Q4"},{"商品群":"學習商品","管道":"WEB","月":"202603","売上":3157109,"年度":"FY25","四半期":"Q4","月表示":"2026/03","FY四半期":"FY25-Q4"},{"商品群":"學習商品","管道":"TM","月":"202603","売上":2588403,"年度":"FY25","四半期":"Q4","月表示":"2026/03","FY四半期":"FY25-Q4"},{"商品群":"學習商品","管道":"KOL","月":"202603","売上":4319071,"年度":"FY25","四半期":"Q4","月表示":"2026/03","FY四半期":"FY25-Q4"},{"商品群":"學習商品","管道":"EC","月":"202603","売上":758824,"年度":"FY25","四半期":"Q4","月表示":"2026/03","FY四半期":"FY25-Q4"},{"商品群":"學習商品","管道":"其他","月":"202603","売上":0,"年度":"FY25","四半期":"Q4","月表示":"2026/03","FY四半期":"FY25-Q4"},{"商品群":"周邊商品","管道":"WEB","月":"202603","売上":423837,"年度":"FY25","四半期":"Q4","月表示":"2026/03","FY四半期":"FY25-Q4"},{"商品群":"周邊商品","管道":"TM","月":"202603","売上":57180,"年度":"FY25","四半期":"Q4","月表示":"2026/03","FY四半期":"FY25-Q4"},{"商品群":"周邊商品","管道":"KOL","月":"202603","売上":33299,"年度":"FY25","四半期":"Q4","月表示":"2026/03","FY四半期":"FY25-Q4"},{"商品群":"周邊商品","管道":"EC","月":"202603","売上":123734,"年度":"FY25","四半期":"Q4","月表示":"2026/03","FY四半期":"FY25-Q4"},{"商品群":"周邊商品","管道":"其他","月":"202603","売上":0,"年度":"FY25","四半期":"Q4","月表示":"2026/03","FY四半期":"FY25-Q4"},{"商品群":"Mirafeel","管道":"WEB","月":"202603","売上":146600,"年度":"FY25","四半期":"Q4","月表示":"2026/03","FY四半期":"FY25-Q4"},{"商品群":"Mirafeel","管道":"TM","月":"202603","売上":36576,"年度":"FY25","四半期":"Q4","月表示":"2026/03","FY四半期":"FY25-Q4"},{"商品群":"Mirafeel","管道":"KOL","月":"202603","売上":89452,"年度":"FY25","四半期":"Q4","月表示":"2026/03","FY四半期":"FY25-Q4"},{"商品群":"Mirafeel","管道":"EC","月":"202603","売上":0,"年度":"FY25","四半期":"Q4","月表示":"2026/03","FY四半期":"FY25-Q4"},{"商品群":"Mirafeel","管道":"其他","月":"202603","売上":0,"年度":"FY25","四半期":"Q4","月表示":"2026/03","FY四半期":"FY25-Q4"}];
+
+// ══════════════════════════════════════════════
+// CONSTANTS
+// ══════════════════════════════════════════════
+const ALL_MONTHS   = [...new Set(RAW.map(r=>r['月']))].sort();
+const ALL_PRODUCTS = ['學習商品','周邊商品','Mirafeel'];
+const ALL_CHANNELS = ['WEB','TM','KOL','EC','其他'];
+const NEW_ERA      = '202410';
+const FY24_MONTHS  = ALL_MONTHS.filter(m=>m>='202404'&&m<='202503');
+const FY25_MONTHS  = ALL_MONTHS.filter(m=>m>='202504'&&m<='202603');
+// Palette — 12 distinct macaron-adjacent colors for series
+const SERIES_PALETTE=[
+  {fill:'#b8d8f4',stroke:'#5a9fd4',text:'#1a4070'},
+  {fill:'#f4d4b8',stroke:'#c87040',text:'#6a2800'},
+  {fill:'#d4b8f4',stroke:'#9060d0',text:'#3a1060'},
+  {fill:'#b8f4ce',stroke:'#3eb86a',text:'#0a4020'},
+  {fill:'#f4b8c1',stroke:'#c8707e',text:'#5a1020'},
+  {fill:'#f4e4b8',stroke:'#c89830',text:'#5a3800'},
+  {fill:'#b8f4f0',stroke:'#30b8b0',text:'#0a3838'},
+  {fill:'#e8d0f8',stroke:'#9040c0',text:'#3a0060'},
+  {fill:'#c8e8b8',stroke:'#40a030',text:'#104000'},
+  {fill:'#f8d8b8',stroke:'#d06020',text:'#601800'},
+  {fill:'#b8d0f8',stroke:'#3060c8',text:'#001880'},
+  {fill:'#f8e0d0',stroke:'#c05040',text:'#500010'},
+];
+const toMan=v=>+(v/10000).toFixed(1);
+const fmtMan=v=>toMan(v).toLocaleString('ja-JP');
+const fmtManR=v=>{const m=toMan(v);return m%1===0?m.toLocaleString():m.toFixed(1);}
+
+// ══════════════════════════════════════════════
+// i18n
+// ══════════════════════════════════════════════
+const T={
+  ja:{
+    title:'物販売上ダッシュボード',subtitle:'商品群 × 販売管道 | FY2024–FY2025 ／ 単位：万元',
+    rangeLbl:'表示期間',pAll:'全期間',pNew:'新体制（24/10〜）',
+    pH1FY24:'FY24前半',pH2FY24:'FY24後半',pH1FY25:'FY25前半',pH2FY25:'FY25後半',
+    ctrlAxis:'時間軸',month:'月次',quarter:'四半期',year:'年度',
+    spTitle:'商品群 × 管道　比較系列',
+    addBtn:'＋ 新増系列',clearBtn:'全削除',
+    spHint:'商品群と管道を選んで追加。複数系列を重ねて比較できます。',
+    stacked:'積み上げ棒',line:'折れ線',ratio:'比率（%）',actual:'実数',
+    anaTitle:'自動分析（新体制 24/10〜）',
+    crossTitle:'クロス集計 — 商品群 × 管道（万元・表示期間）',
+    allProd:'全商品群',allCh:'全管道',other:'其他',
+    kTotal:'期間内合計',kAvg:'期間内月平均',
+    kP0:'學習商品',kP1:'周邊商品',kP2:'Mirafeel',
+    kC0:'WEB',kC1:'TEL',kC2:'KOL',kC3:'EC',
+    tTotal:'合計',tYoY:'前年比',
+    secOverall:'総括',secProduct:'商品群別（新体制）',secChannel:'管道別（新体制）',
+  },
+  zh:{
+    title:'商品銷售儀表板',subtitle:'商品群 × 銷售管道 | FY2024–FY2025 ／ 單位：萬元',
+    rangeLbl:'顯示期間',pAll:'全期間',pNew:'新體制（24/10〜）',
+    pH1FY24:'FY24前半',pH2FY24:'FY24後半',pH1FY25:'FY25前半',pH2FY25:'FY25後半',
+    ctrlAxis:'時間軸',month:'月次',quarter:'季度',year:'年度',
+    spTitle:'商品群 × 管道　比較系列',
+    addBtn:'＋ 新增系列',clearBtn:'全刪除',
+    spHint:'選擇商品群和管道後新增，可重疊多組進行比較。',
+    stacked:'堆疊長條',line:'折線圖',ratio:'比例（%）',actual:'實際數值',
+    anaTitle:'自動分析（新體制 24/10〜）',
+    crossTitle:'交叉分析表 — 商品群 × 管道（萬元）',
+    allProd:'全商品群',allCh:'全管道',other:'其他',
+    kTotal:'期間合計',kAvg:'期間月均',
+    kP0:'學習商品',kP1:'周邊商品',kP2:'Mirafeel',
+    kC0:'WEB',kC1:'TEL',kC2:'KOL',kC3:'EC',
+    tTotal:'合計',tYoY:'前年比',
+    secOverall:'總括',secProduct:'商品群別（新體制）',secChannel:'管道別（新體制）',
+  }
+};
+
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+let lang='ja', axis='month', chartType='bar', valueMode='abs';
+let rangeStart=NEW_ERA, rangeEnd=ALL_MONTHS[ALL_MONTHS.length-1];
+let pickMode=false;
+let mainChartObj=null;
+// series = [{prod, ch, id}]  prod/__ALL__, ch/__ALL__
+let series=[];
+let seriesIdCounter=0;
+
+// ══════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════
+const pct=(a,b)=>b===0?null:((a-b)/b*100);
+const sgn=v=>v>=0?'+':'';
+const dcls=v=>v>=0?'hp':'hn';
+
+function filtered(prod=null,ch=null){
+  return RAW.filter(r=>
+    r['月']>=rangeStart&&r['月']<=rangeEnd&&
+    (prod===null||prod==='__ALL__'||r['商品群']===prod)&&
+    (ch===null||ch==='__ALL__'||r['管道']===ch)
+  );
+}
+function allNew(){return RAW.filter(r=>r['月']>=NEW_ERA);}
+function sumBy(data,fn){const m={};data.forEach(d=>{const k=fn(d);m[k]=(m[k]||0)+d['売上'];});return m;}
+function sortedKeys(data,fn){return[...new Set(data.map(fn))].sort();}
+function getAxisKey(r){
+  if(axis==='month')return r['月表示'];
+  if(axis==='quarter')return r['FY四半期'];
+  return r['年度'];
+}
+function seriesLabel(s){
+  const pName=s.prod==='__ALL__'?(lang==='ja'?'全商品':'全商品'):s.prod;
+  const cName=s.ch==='__ALL__'?(lang==='ja'?'全管道':'全管道'):s.ch;
+  return pName+' × '+cName;
+}
+
+// ══════════════════════════════════════════════
+// i18n
+// ══════════════════════════════════════════════
+
+// ══════════════════════════════════════════════
+// RANGE
+// ══════════════════════════════════════════════
+function buildRangePicker(){
+  ['FY24','FY25'].forEach(fy=>{
+    const months=fy==='FY24'?FY24_MONTHS:FY25_MONTHS;
+    const wrap=document.getElementById('rangeMonths'+fy);
+    wrap.innerHTML='';
+    months.forEach(m=>{
+      const isNew=m>=NEW_ERA;
+      const btn=document.createElement('button');
+      btn.className='rm'+(isNew?' new-era':'');
+      btn.dataset.m=m;
+      btn.textContent=m.slice(2,4)+'/'+m.slice(4,6);
+      btn.onclick=()=>clickMonth(m);
+      wrap.appendChild(btn);
+    });
+  });
+  updateRangeUI();
+}
+function clickMonth(m){
+  if(!pickMode){rangeStart=m;rangeEnd=m;pickMode=true;clearPresets();}
+  else{if(m<rangeStart)rangeStart=m;else rangeEnd=m;pickMode=false;renderAllFull();}
+  updateRangeUI();
+}
+function updateRangeUI(){
+  document.querySelectorAll('.rm').forEach(btn=>{
+    const m=btn.dataset.m,isNew=m>=NEW_ERA;
+    btn.className='rm'+(isNew?' new-era':'');
+    if(m===rangeStart&&m===rangeEnd)btn.classList.add('sel',...(isNew?['new-era']:[]));
+    else if(m===rangeStart||m===rangeEnd)btn.classList.add('start');
+    else if(m>rangeStart&&m<rangeEnd)btn.classList.add('in-range');
+  });
+}
+function clearPresets(){document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));}
+function setPreset(p){
+  clearPresets();
+  document.querySelector(`.preset-btn[data-p="${p}"]`).classList.add('active');
+  pickMode=false;
+  const last=ALL_MONTHS[ALL_MONTHS.length-1];
+  const presets={
+    all:['202404',last],new:[NEW_ERA,last],
+    fy24:['202404','202503'],h1fy24:['202404','202409'],h2fy24:['202410','202503'],
+    fy25:['202504',last],h1fy25:['202504','202509'],h2fy25:['202510',last],
+  };
+  [rangeStart,rangeEnd]=presets[p]||[ALL_MONTHS[0],last];
+  updateRangeUI();renderAllFull();
+}
+
+// ══════════════════════════════════════════════
+// AXIS / CHART TYPE
+// ══════════════════════════════════════════════
+function setAxis(v){
+  axis=v;
+  document.querySelectorAll('#axisGroup .btn').forEach(b=>b.classList.toggle('active',b.dataset.val===v));
+  renderAllFull();
+}
+function setChartType(v){
+  chartType=v;
+  document.getElementById('btnBar').classList.toggle('active',v==='bar');
+  document.getElementById('btnLine').classList.toggle('active',v==='line');
+  // 折れ線の場合は比率非表示
+  document.getElementById('pctToggleWrap').style.display=v==='line'?'none':'flex';
+  if(v==='line')valueMode='abs';
+  renderChart();
+}
+function setVM(v){
+  valueMode=v;
+  document.getElementById('btnPct').classList.toggle('active',v==='pct');
+  document.getElementById('btnAbs').classList.toggle('active',v==='abs');
+  renderChart();
+}
+
+// ══════════════════════════════════════════════
+// SERIES MANAGEMENT
+// ══════════════════════════════════════════════
+function addSeries(){
+  const prod=document.getElementById('selProduct').value;
+  const ch=document.getElementById('selChannel').value;
+  const id=`s${++seriesIdCounter}`;
+  // prevent duplicate
+  if(series.find(s=>s.prod===prod&&s.ch===ch))return;
+  series.push({prod,ch,id,colorIdx:series.length%SERIES_PALETTE.length});
+  renderTagsUI();
+  renderChart();
+}
+function removeSeries(id){
+  series=series.filter(s=>s.id!==id);
+  // re-assign color indices
+  series.forEach((s,i)=>s.colorIdx=i%SERIES_PALETTE.length);
+  renderTagsUI();renderChart();
+}
+function clearSeries(){series=[];renderTagsUI();renderChart();}
+
+function renderTagsUI(){
+  const wrap=document.getElementById('seriesTags');
+  if(!series.length){
+    wrap.innerHTML=`<span style="font-size:11px;color:var(--tm);">${lang==='ja'?'系列が未設定です。上で選択して追加してください。':'尚未設定系列，請從上方選取後新增。'}</span>`;
+    return;
+  }
+  wrap.innerHTML=series.map(s=>{
+    const pal=SERIES_PALETTE[s.colorIdx];
+    const lbl=seriesLabel(s);
+    return`<span class="s-tag" style="background:${pal.fill};border-color:${pal.stroke};color:${pal.text};">
+      ${lbl}<span class="s-x" onclick="removeSeries('${s.id}')">×</span>
+    </span>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════
+// KPI
+// ══════════════════════════════════════════════
+function renderKPI(){
+  const d=filtered();
+  const total=d.reduce((s,r)=>s+r['売上'],0);
+  const mc=[...new Set(d.map(r=>r['月']))].length||1;
+  const avg=Math.round(total/mc);
+  const t=T[lang];
+
+  const pTotals=ALL_PRODUCTS.map((p,i)=>({
+    label:t['kP'+i],
+    val:d.filter(r=>r['商品群']===p).reduce((s,r)=>s+r['売上'],0)
+  }));
+  const cKeys=['WEB','TM','KOL','EC'];
+  const cTotals=cKeys.map((c,i)=>({
+    label:t['kC'+i],
+    val:d.filter(r=>r['管道']===c).reduce((s,r)=>s+r['売上'],0)
+  }));
+
+  const panels=[
+    {label:t.kTotal,val:fmtMan(total),pct:null,cls:'c0'},
+    {label:t.kAvg,val:fmtMan(avg),pct:null,cls:'c1'},
+    ...pTotals.map((p,i)=>({label:p.label,val:fmtMan(p.val),pct:total>0?+(p.val/total*100).toFixed(1):0,cls:`c${i+2}`})),
+    ...cTotals.map((c,i)=>({label:c.label,val:fmtMan(c.val),pct:total>0?+(c.val/total*100).toFixed(1):0,cls:`c${i+5}`})),
+  ];
+
+  document.getElementById('kpiGrid').innerHTML=panels.map(p=>`
+    <div class="kpi ${p.cls}">
+      <div class="kpi-lbl">${p.label}</div>
+      <div class="kpi-val">${p.val}</div>
+      <div class="kpi-sub">万元</div>
+      ${p.pct!==null?`<span class="kpi-pct">${p.pct}%</span>`:''}
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════
+// CHART — series-based rendering
+// ══════════════════════════════════════════════
+function renderChart(){
+  // Build union of x-axis labels from all current period data
+  const baseData=filtered();
+  const labels=sortedKeys(baseData,getAxisKey);
+  const t=T[lang];
+
+  Chart.register(ChartDataLabels);
+
+  if(!series.length){
+    // empty state — draw blank
+    if(mainChartObj)mainChartObj.destroy();
+    mainChartObj=new Chart(document.getElementById('mainChart').getContext('2d'),{
+      type:'bar',data:{labels,datasets:[]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},datalabels:{display:false}},
+        scales:{x:{ticks:{font:{size:10}}},y:{ticks:{font:{size:11},callback:v=>v+'万'}}}}
+    });
+    document.getElementById('chartTitle').textContent=lang==='ja'?'系列未設定':'尚未設定系列';
+    document.getElementById('chartSub').textContent=lang==='ja'?'上の「比較系列」で商品群×管道を追加してください。':'請在上方「比較系列」新增商品群×管道。';
+    document.getElementById('legendInline').innerHTML='';
+    return;
+  }
+
+  // Compute per-series data
+  const seriesData=series.map(s=>{
+    const sd=filtered(s.prod,s.ch);
+    const byKey=sumBy(sd,getAxisKey);
+    return labels.map(l=>toMan(byKey[l]||0));
+  });
+
+  // For % mode: compute per-label totals (sum of all series at that label)
+  const labelTotals=labels.map((_,li)=>series.reduce((sum,_s,si)=>sum+seriesData[si][li],0));
+
+  // Build Chart.js datasets
+  const isStacked=chartType==='bar';
+  const isLine=chartType==='line';
+  const isPct=valueMode==='pct'&&!isLine;
+
+  const datasets=series.map((s,si)=>{
+    const pal=SERIES_PALETTE[s.colorIdx];
+    const raw=seriesData[si];
+    const vals=isPct
+      ?raw.map((v,li)=>labelTotals[li]>0?+(v/labelTotals[li]*100).toFixed(1):0)
+      :raw;
+
+    if(isLine){
+      return{
+        label:seriesLabel(s),data:vals,
+        borderColor:pal.stroke,backgroundColor:pal.fill+'50',
+        borderWidth:2.5,pointRadius:4,pointHoverRadius:7,tension:0.3,fill:false,
+        datalabels:{
+          display:ctx=>ctx.dataset.data[ctx.dataIndex]>0,
+          anchor:'top',align:'top',
+          formatter:v=>v>0?fmtManR(v*10000)+'万':'',
+          font:{size:9,weight:'600'},color:pal.stroke,
+          offset:2,
+        }
+      };
+    }else{
+      return{
+        label:seriesLabel(s),data:vals,
+        backgroundColor:pal.fill+'cc',borderColor:pal.stroke,
+        borderWidth:1.5,borderRadius:isStacked?0:4,
+        datalabels:{
+          display:ctx=>{const v=ctx.dataset.data[ctx.dataIndex];return isPct?v>=3:v>=5;},
+          anchor:'center',align:'center',
+          formatter:v=>isPct?v.toFixed(1)+'%':fmtManR(v*10000)+'万',
+          font:{size:9,weight:'700'},color:'#333',
+        }
+      };
+    }
+  });
+
+  const axisLabel=axis==='month'?t.month:axis==='quarter'?t.quarter:t.year;
+  document.getElementById('chartTitle').textContent=
+    lang==='ja'?`篩選比較図　${axisLabel}`:`篩選比較圖　${axisLabel}`;
+  document.getElementById('chartSub').textContent=
+    `${rangeStart.slice(0,4)+'/'+rangeStart.slice(4,6)}〜${rangeEnd.slice(0,4)+'/'+rangeEnd.slice(4,6)} · ${isPct?t.ratio:t.actual}`;
+
+  const allVals=seriesData.flat();
+  const maxV=Math.max(...allVals,1);
+
+  if(mainChartObj)mainChartObj.destroy();
+  mainChartObj=new Chart(document.getElementById('mainChart').getContext('2d'),{
+    type:isLine?'line':'bar',
+    data:{labels,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          label:ctx=>{
+            const v=ctx.parsed.y;
+            return ` ${ctx.dataset.label}: ${isPct?v.toFixed(1)+'%':v.toLocaleString()+'万元'}`;
+          }
+        }}
+      },
+      scales:{
+        x:{stacked:isStacked,ticks:{font:{size:10},maxRotation:45},grid:{color:'#f0ebe5'}},
+        y:{stacked:isStacked,
+          ticks:{font:{size:11},callback:v=>isPct?v+'%':v.toLocaleString()+'万'},
+          grid:{color:'#f0ebe5'},
+          suggestedMax:isPct?100:maxV*1.2,min:0}
+      }
+    },
+    plugins:[ChartDataLabels]
+  });
+
+  // Inline legend
+  document.getElementById('legendInline').innerHTML=series.map(s=>{
+    const pal=SERIES_PALETTE[s.colorIdx];
+    return`<div style="display:flex;align-items:center;gap:5px;">
+      <div style="width:12px;height:12px;border-radius:3px;background:${pal.fill};border:1.5px solid ${pal.stroke};flex-shrink:0;"></div>
+      <span style="font-size:11px;color:var(--ts)">${seriesLabel(s)}</span>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════
+// ANALYSIS
+// ══════════════════════════════════════════════
+function renderAnalysis(){
+  const t=T[lang];const isJa=lang==='ja';
+  const nd=allNew();
+  const nm=[...new Set(nd.map(r=>r['月']))].sort();
+  const nTotal=nd.reduce((s,r)=>s+r['売上'],0);
+  const nAvg=Math.round(nTotal/nm.length);
+  const byM=sumBy(nd,r=>r['月表示']);
+  const peak=Object.entries(byM).sort((a,b)=>b[1]-a[1])[0];
+  const valley=Object.entries(byM).sort((a,b)=>a[1]-b[1])[0];
+  const old=RAW.filter(r=>r['月']>='202404'&&r['月']<='202409');
+  const oldAvg=Math.round(old.reduce((s,r)=>s+r['売上'],0)/6);
+  const nyoy=pct(nAvg,oldAvg);
+
+  const prodB={};
+  ALL_PRODUCTS.forEach(p=>{
+    const pd=nd.filter(r=>r['商品群']===p);
+    const pt=pd.reduce((s,r)=>s+r['売上'],0);
+    const pa=Math.round(pt/nm.length);
+    const ps=(pt/nTotal*100).toFixed(1);
+    const pOldAvg=Math.round(old.filter(r=>r['商品群']===p).reduce((s,r)=>s+r['売上'],0)/6);
+    const py=pct(pa,pOldAvg);
+    const byC=sumBy(pd,r=>r['管道']);
+    const topC=Object.entries(byC).sort((a,b)=>b[1]-a[1])[0];
+    const last3=nm.slice(-3);
+    const l3=last3.map(m=>pd.filter(r=>r['月']===m).reduce((s,r)=>s+r['売上'],0));
+    const trend=l3.length===3?pct(l3[2],l3[0]):null;
+    const b=[];
+    if(isJa){
+      b.push(`月平均 <span class="hb">${fmtMan(pa)}万元</span>、全体シェア <span class="hb">${ps}%</span>。旧体制比 <span class="${dcls(py)}">${sgn(py)}${py!==null?py.toFixed(1)+'%':'—'}</span>。`);
+      b.push(`主力管道：<span class="hb">${topC[0]}</span>（${(topC[1]/pt*100).toFixed(0)}%）。`);
+      if(trend!==null)b.push(`直近3か月（${last3[0].slice(4,6)}→${last3[2].slice(4,6)}月）トレンド: <span class="${dcls(trend)}">${sgn(trend)}${trend.toFixed(1)}%</span>。`);
+    }else{
+      b.push(`月均 <span class="hb">${fmtMan(pa)}萬元</span>，占比 <span class="hb">${ps}%</span>。舊體制比 <span class="${dcls(py)}">${sgn(py)}${py!==null?py.toFixed(1)+'%':'—'}</span>。`);
+      b.push(`主力管道：<span class="hb">${topC[0]}</span>（${(topC[1]/pt*100).toFixed(0)}%）。`);
+      if(trend!==null)b.push(`近3個月趨勢：<span class="${dcls(trend)}">${sgn(trend)}${trend.toFixed(1)}%</span>。`);
+    }
+    if(p==='學習商品')b.push(isJa?`売上規模最大。KOL依存度が高く変動幅が大きい。26/03はWEB・TM・KOL三管道が揃って急伸し年度末需要が集中。`:`銷售規模最大，KOL依賴度高、月波動大。26/03三管道同步急增，年度末需求集中。`);
+    else if(p==='周邊商品')b.push(isJa?`新体制以降ECが急拡大し主力管道に転換。25/04 EC実績 <span class="hp">${fmtMan(694551)}万元</span> は同商品群史上最高。`:`新體制後EC急速擴大成為主力管道。25/04 EC達 <span class="hp">${fmtMan(694551)}萬元</span>，歷史峰值。`);
+    else b.push(isJa?`新体制後に本格始動。WEB・TMが安定し、25/08以降KOLも拡大基調。3商品中最高の成長ポテンシャル。`:`新體制後正式起步。WEB・TM穩定，25/08後KOL擴大趨勢。三商品中成長潛力最高。`);
+    prodB[p]=b;
+  });
+
+  const chB={};
+  ALL_CHANNELS.forEach(ch=>{
+    const cd=nd.filter(r=>r['管道']===ch);
+    const ct=cd.reduce((s,r)=>s+r['売上'],0);
+    const ca=Math.round(ct/nm.length);
+    const cs=(ct/nTotal*100).toFixed(1);
+    const cOldAvg=Math.round(old.filter(r=>r['管道']===ch).reduce((s,r)=>s+r['売上'],0)/6);
+    const cy=pct(ca,cOldAvg);
+    const topP=Object.entries(sumBy(cd,r=>r['商品群'])).sort((a,b)=>b[1]-a[1])[0];
+    const b=[];
+    if(isJa){
+      b.push(`月平均 <span class="hb">${fmtMan(ca)}万元</span>、シェア <span class="hb">${cs}%</span>。旧体制比 <span class="${dcls(cy)}">${sgn(cy)}${cy!==null?cy.toFixed(1)+'%':'—'}</span>。`);
+      b.push(`主力商品群：<span class="hb">${topP[0]}</span>（${(topP[1]/ct*100).toFixed(0)}%）。`);
+    }else{
+      b.push(`月均 <span class="hb">${fmtMan(ca)}萬元</span>，占比 <span class="hb">${cs}%</span>。舊體制比 <span class="${dcls(cy)}">${sgn(cy)}${cy!==null?cy.toFixed(1)+'%':'—'}</span>。`);
+      b.push(`主力商品群：<span class="hb">${topP[0]}</span>（${(topP[1]/ct*100).toFixed(0)}%）。`);
+    }
+    if(ch==='WEB')b.push(isJa?`3商品すべてに安定貢献。月 <span class="hb">100〜250万元</span> のレンジで全管道中変動が最小。`:`三商品均穩定貢獻，波動最小管道。月均 <span class="hb">100〜250萬元</span>。`);
+    else if(ch==='TM')b.push(isJa?`學習商品が中心。新体制後も <span class="hb">120〜320万元</span> の高水準を維持し全管道中シェア最大。`:`以學習商品為主，持續 <span class="hb">120〜320萬元</span> 高水準，全管道份額最大。`);
+    else if(ch==='KOL')b.push(isJa?`変動幅が全管道中最大。季節性・施策依存が強く、26/03に432万元まで急増。`:`波動幅最大，季節性強。26/03急增至432萬元。`);
+    else if(ch==='EC')b.push(isJa?`新体制後に急成長。24/09以前はほぼゼロが、以降 <span class="hp">30〜76万元</span> で安定推移。周邊商品のEC化が主因。`:`新體制後急速成長，穩定在 <span class="hp">30〜76萬元</span>。周邊商品轉向EC為主因。`);
+    else b.push(isJa?`スポット的・不定期。大半の月はゼロ付近だが、24/09（31万元）・26/02（23万元）など突出月が散在。`:`零星不規律，偶有突出月份。`);
+    chB[ch]=b;
+  });
+
+  let html=`<div class="ana-section"><div class="ana-sec-title">${t.secOverall}</div><ul class="ana-bullets">`;
+  if(isJa){
+    html+=`<li>新体制（${nm.length}か月）累計 <span class="hb">${fmtMan(nTotal)}万元</span>、月平均 <span class="hb">${fmtMan(nAvg)}万元</span>。</li>`;
+    html+=`<li>旧体制（FY24 Apr-Sep）月平均比：<span class="${dcls(nyoy)}">${sgn(nyoy)}${nyoy!==null?nyoy.toFixed(1)+'%':'—'}</span>。規模縮小後の再構築を反映。</li>`;
+    html+=`<li>ピーク月 <span class="hb">${peak[0]}</span>（${fmtMan(peak[1])}万元）— KOL・WEB・TM三管道同時急伸。</li>`;
+    html+=`<li>最低月 <span class="hn">${valley[0]}</span>（${fmtMan(valley[1])}万元）— 体制移行直後の調整局面。</li>`;
+  }else{
+    html+=`<li>新體制（${nm.length}個月）累計 <span class="hb">${fmtMan(nTotal)}萬元</span>，月均 <span class="hb">${fmtMan(nAvg)}萬元</span>。</li>`;
+    html+=`<li>與舊體制（FY24 Apr-Sep）月均比：<span class="${dcls(nyoy)}">${sgn(nyoy)}${nyoy!==null?nyoy.toFixed(1)+'%':'—'}</span>。</li>`;
+    html+=`<li>峰值 <span class="hb">${peak[0]}</span>（${fmtMan(peak[1])}萬元）— KOL・WEB・TM同步急升。</li>`;
+    html+=`<li>最低月 <span class="hn">${valley[0]}</span>（${fmtMan(valley[1])}萬元）— 體制調整期。</li>`;
+  }
+  html+=`</ul></div>`;
+
+  html+=`<div class="ana-section"><div class="ana-sec-title">${t.secProduct}</div>`;
+  ALL_PRODUCTS.forEach(p=>{
+    html+=`<div style="margin-bottom:8px;"><div style="font-size:11px;font-weight:700;color:var(--tp);margin-bottom:3px;">▸ ${p}</div><ul class="ana-bullets">${prodB[p].map(b=>`<li>${b}</li>`).join('')}</ul></div>`;
+  });
+  html+=`</div><div class="ana-section"><div class="ana-sec-title">${t.secChannel}</div>`;
+  ALL_CHANNELS.forEach(ch=>{
+    html+=`<div style="margin-bottom:8px;"><div style="font-size:11px;font-weight:700;color:var(--tp);margin-bottom:3px;">▸ ${ch}</div><ul class="ana-bullets">${chB[ch].map(b=>`<li>${b}</li>`).join('')}</ul></div>`;
+  });
+  html+=`</div>`;
+  document.getElementById('anaContent').innerHTML=html;
+}
+
+// ══════════════════════════════════════════════
+// CROSS TABLE
+// ══════════════════════════════════════════════
+function renderTable(){
+  const d=filtered();
+  const t=T[lang];
+  const prods=ALL_PRODUCTS;
+  const chs=ALL_CHANNELS;
+
+  const agg={};prods.forEach(p=>{agg[p]={};chs.forEach(c=>{agg[p][c]=0;});});
+  d.forEach(r=>{if(agg[r['商品群']]&&agg[r['商品群']][r['管道']]!==undefined)agg[r['商品群']][r['管道']]+=r['売上'];});
+
+  const dAll=RAW;
+  const d24=dAll.filter(r=>r['年度']==='FY24'),d25=dAll.filter(r=>r['年度']==='FY25');
+  const a24={},a25={};
+  prods.forEach(p=>{a24[p]={};a25[p]={};chs.forEach(c=>{a24[p][c]=0;a25[p][c]=0;});});
+  d24.forEach(r=>{if(a24[r['商品群']]&&a24[r['商品群']][r['管道']]!==undefined)a24[r['商品群']][r['管道']]+=r['売上'];});
+  d25.forEach(r=>{if(a25[r['商品群']]&&a25[r['商品群']][r['管道']]!==undefined)a25[r['商品群']][r['管道']]+=r['売上'];});
+
+  const rowT={};prods.forEach(p=>{rowT[p]=chs.reduce((s,c)=>s+(agg[p][c]||0),0);});
+  const colT={};chs.forEach(c=>{colT[c]=prods.reduce((s,p)=>s+(agg[p][c]||0),0);});
+  const grand=prods.reduce((s,p)=>s+rowT[p],0);
+  const maxV=Math.max(...prods.flatMap(p=>chs.map(c=>agg[p][c]||0)));
+  const hcls=v=>v===0?'h0':v>maxV*0.5?'h2':'h1';
+
+  let html=`<thead><tr><th>—</th>${chs.map(c=>`<th>${c}</th>`).join('')}<th>${t.tTotal}</th></tr></thead><tbody>`;
+  prods.forEach(p=>{
+    html+=`<tr><td>${p}</td>`;
+    chs.forEach(c=>{const v=agg[p][c]||0;html+=`<td class="${hcls(v)}">${v?fmtMan(v):'—'}</td>`;});
+    html+=`<td><strong>${fmtMan(rowT[p])}</strong></td></tr>`;
+  });
+  html+=`<tr class="ryoy"><td>${t.tYoY}</td>`;
+  chs.forEach(c=>{
+    const v24=prods.reduce((s,p)=>s+(a24[p][c]||0),0);
+    const v25=prods.reduce((s,p)=>s+(a25[p][c]||0),0);
+    const y=pct(v25,v24);
+    html+=`<td class="${y===null?'':y>=0?'pd':'nd'}">${y===null?'—':(y>=0?'▲':'▼')+Math.abs(y).toFixed(1)+'%'}</td>`;
+  });
+  const t24=d24.reduce((s,r)=>s+r['売上'],0),t25=d25.reduce((s,r)=>s+r['売上'],0);
+  const yt=pct(t25,t24);
+  html+=`<td class="${yt===null?'':yt>=0?'pd':'nd'}">${yt===null?'—':(yt>=0?'▲':'▼')+Math.abs(yt).toFixed(1)+'%'}</td></tr>`;
+  html+=`<tr class="rt"><td>${t.tTotal}</td>${chs.map(c=>`<td>${fmtMan(colT[c])}</td>`).join('')}<td>${fmtMan(grand)}</td></tr></tbody>`;
+  document.getElementById('crossTable').innerHTML=html;
+}
+
+// ══════════════════════════════════════════════
+// RENDER ALL
+// ══════════════════════════════════════════════
+function _renderAllBase(){renderKPI();renderChart();renderAnalysis();renderTable();}
+
+// ══ INIT ══
+buildRangePicker();
+applyI18n();
+// Default: add 學習×TM and 學習×WEB to start
+series=[
+  {prod:'學習商品',ch:'TM',id:'s1',colorIdx:0},
+  {prod:'學習商品',ch:'WEB',id:'s2',colorIdx:1},
+];
+seriesIdCounter=2;
+renderTagsUI();
+// renderAllFull is defined later in the script; use setTimeout to ensure all functions are loaded
+setTimeout(()=>{ renderAllFull(); }, 0);
+
+// ══════════════════════════════════════════════
+// PRODUCT DATA (學習商品 2024〜)
+// ══════════════════════════════════════════════
+const PRODUCTS_INFO = [
+  { id:1, name:'語彙表達・智育 學習套組',     nameJa:'語彙・智育 學習套組',   price:4900, orig:6000, theme:'語彙量・智育・親子互動', ageMin:'1歲以上', bcl:18, launch:'202510', launchLabel:'25/10', color:'#f4b8c1', stroke:'#c8707e',
+    contents:'語彙智育遊戲書5本、學習玩具4組、線上影音37個、活用手冊' },
+  { id:2, name:'和巧虎一起說英語 PLUS⁺【初階版】', nameJa:'英語 PLUS⁺ 初階',  price:4800, orig:6000, theme:'英語啟蒙（聽說）',       ageMin:'1歲以上', bcl:30, launch:'202407', launchLabel:'24/07', color:'#b8d8f4', stroke:'#5a9fd4',
+    contents:'教具及配件3大組、英語繪本遊戲書6本、線上影音80+個' },
+  { id:3, name:'和巧虎一起說英語【進階版】',   nameJa:'英語進階版',           price:4500, orig:5000, theme:'英語進階（聽說讀寫）',   ageMin:'3歲以上', bcl:42, launch:'202204', launchLabel:'22/04', color:'#d4b8f4', stroke:'#9060d0',
+    contents:'教具2組・配件2組、英語繪本遊戲書6本、DVD 3片、ABC遊戲本' },
+  { id:4, name:'寶寶生活好習慣套組',           nameJa:'生活好習慣套組',        price:4299, orig:null, theme:'生活自理・習慣養成',     ageMin:'1歲以上', bcl:13, launch:'202410', launchLabel:'24/10', color:'#b8f4ce', stroke:'#3eb86a',
+    contents:'親子玩具5組、繪本5本、晚安故事書3本、如廁海報・貼紙、線上影音34個' },
+  { id:5, name:'和巧虎一起學數學套組',         nameJa:'數學套組',              price:3200, orig:4000, theme:'數感邏輯・時鐘',         ageMin:'3歲半以上', bcl:49, launch:'202603', launchLabel:'26/03', color:'#f4e4b8', stroke:'#c89830',
+    contents:'挑戰遊戲本10本、時鐘繪本、IC動動腦機・IC時鐘大師、線上影音36個' },
+  { id:6, name:'和巧虎一起學－注音拼音套組',   nameJa:'注音拼音套組',          price:3200, orig:4000, theme:'注音認讀・描寫・拼音',   ageMin:'幼兒・就學前後', bcl:54, launch:'202411', launchLabel:'24/11', color:'#b8f4f0', stroke:'#30b8b0',
+    contents:'注音互動學習機、IC描寫機・描寫卡30張、遊戲書4本、線上影音83個' },
+  { id:7, name:'聰明左右腦 點讀大冒險',         nameJa:'點讀大冒險',            price:2999, orig:3800, theme:'邏輯・專注・左右腦均衡', ageMin:'3歲以上', bcl:37, launch:'202603', launchLabel:'26/03', color:'#f4d4b8', stroke:'#c87040',
+    contents:'閱讀筆、邏輯點點書7本、聆聽點點書5本、英語遊戲卡46張' },
+  { id:8, name:'巧虎雙語點讀圖鑑',             nameJa:'雙語點讀圖鑑',          price:2399, orig:3000, theme:'中英雙語語彙啟蒙',       ageMin:'寶寶低月齡', bcl:6,  launch:'202601', launchLabel:'26/01', color:'#e8d0f8', stroke:'#9040c0',
+    contents:'點讀巧虎×1、雙語點讀圖鑑4本（生活・動物・交通等）、育兒誌1本' },
+  { id:9, name:'好情緒EQ × 品格人際套組',      nameJa:'好情緒EQ套組',          price:2199, orig:2800, theme:'情緒管理・品格・人際',   ageMin:'幼兒・推定3歲前後', bcl:25, launch:'202505', launchLabel:'25/05', color:'#c8e8b8', stroke:'#40a030',
+    contents:'情緒魔法書6本、品格故事4本、扮演組、好情緒貼紙、線上影音18個' },
+];
+
+// Only products launched from 2024/01 onward for timeline
+const LAUNCH_ITEMS = PRODUCTS_INFO.filter(p=>p.launch>='202401').sort((a,b)=>a.launch.localeCompare(b.launch));
+
+// ── Launch timeline render ──────────────────
+
+
+// ── Launch timeline: SVG overlay aligned to chart X axis ─────
+// Called after chart renders; reads pixel positions from Chart.js scales
+// and draws colored pill markers directly below each X tick.
+
+function renderLaunchTimeline(){
+  // The SVG overlay is painted by paintLaunchSVG() after the chart finishes drawing.
+  // renderLaunchTimeline() is called from renderAllFull; we use requestAnimationFrame
+  // to ensure Chart.js has completed its animation frame first.
+  requestAnimationFrame(()=>requestAnimationFrame(paintLaunchSVG));
+}
+
+function paintLaunchSVG(){
+  const chart = mainChartObj;
+  const wrap  = document.getElementById('launchTimeline');
+  if(!wrap) return;
+
+  const isJa = lang==='ja';
+
+  // ── Chip strip (click-interactive row below chart) ──────
+  // Build groups by axis key
+  const groups={};
+  LAUNCH_ITEMS.forEach(p=>{
+    const k=getLaunchKey(p);
+    if(!groups[k]) groups[k]=[];
+    groups[k].push(p);
+  });
+
+  if(!chart || !chart.scales || !chart.scales.x){
+    // Fallback: just show chips in a flex row
+    let h=`<div style="padding:8px 0 4px;border-top:1px solid var(--bdr);">
+      <div style="font-size:10px;font-weight:700;color:var(--tm);margin-bottom:5px;">📦 ${isJa?'発売商品（クリックで詳細）':'發售商品'}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;">`;
+    LAUNCH_ITEMS.forEach(p=>{
+      const d=p.launch.slice(2,4)+'/'+p.launch.slice(4,6);
+      const n=isJa?p.nameJa:p.name;
+      h+=`<div class="launch-chip" onclick="showProductDetail(${p.id})" style="background:${p.color};border:1.5px solid ${p.stroke};color:${p.stroke};"><span class="lc-date">${d}</span><span class="lc-name">${n}</span><span class="lc-price">NT$${p.price.toLocaleString()}</span></div>`;
+    });
+    h+=`</div></div>`;
+    wrap.innerHTML=h;
+    return;
+  }
+
+  const xScale  = chart.scales.x;
+  const labels  = chart.data.labels;
+  const pillH   = 16;
+  const pillGap = 4;
+
+  // Container: position relative, full width of canvas, height = pillH + padding
+  // Pills absolutely positioned by reading xScale.getPixelForValue
+  // We need the LEFT offset of the chart canvas within the chart-card
+  const canvas      = chart.canvas;
+  const canvasLeft  = canvas.offsetLeft;  // offset within chart-wrap
+  const xLeftPad    = xScale.left;        // Chart.js chartArea left in canvas px
+
+  // Build HTML: one absolutely-positioned container per label that has launches
+  let pillsHtml = `<div style="position:relative;height:${pillH+10}px;margin-top:2px;border-top:1px solid var(--bdr);">`;
+
+  labels.forEach((lbl, i)=>{
+    const items = groups[lbl];
+    if(!items||!items.length) return;
+
+    // X center of this tick in canvas CSS pixels
+    const xCenter = xScale.getPixelForValue(i);
+    const n = items.length;
+    const indivW = 54;
+    const totalW = n*indivW + (n-1)*4;
+
+    items.forEach((p, si)=>{
+      const name   = isJa ? p.nameJa : p.name;
+      const maxLen = 5;
+      const short  = name.length > maxLen ? name.slice(0,maxLen)+'…' : name;
+      // left position: center pill on xCenter; if multiple, offset left/right
+      const offsetX = si*(indivW+4) - totalW/2 + indivW/2;
+      const leftPx  = canvasLeft + xCenter - indivW/2 + (n>1 ? si*(indivW+4)-totalW/2+indivW/2 : 0);
+
+      pillsHtml += `<div onclick="showProductDetail(${p.id})"
+        style="position:absolute;left:${leftPx}px;top:5px;
+               width:${indivW}px;height:${pillH}px;
+               background:${p.color};border:1.5px solid ${p.stroke};
+               border-radius:${pillH/2}px;cursor:pointer;
+               display:flex;align-items:center;justify-content:center;
+               font-size:9px;font-weight:700;color:${p.stroke};
+               white-space:nowrap;overflow:hidden;
+               box-sizing:border-box;padding:0 4px;z-index:10;"
+        title="${p.name} NT$${p.price.toLocaleString()}">${short}</div>`;
+    });
+  });
+
+  pillsHtml += `</div>`;
+
+  // Clickable chip strip
+  const title = isJa ? '📦 発売商品（クリックで詳細）' : '📦 發售商品（點擊查看詳細）';
+  let chipHtml = `<div style="padding:6px 0 0;">
+    <div style="font-size:10px;font-weight:700;color:var(--tm);margin-bottom:5px;">${title}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px;">`;
+  LAUNCH_ITEMS.forEach(p=>{
+    const d=p.launch.slice(2,4)+'/'+p.launch.slice(4,6);
+    const n=isJa?p.nameJa:p.name;
+    chipHtml+=`<div class="launch-chip" onclick="showProductDetail(${p.id})"
+      style="background:${p.color};border:1.5px solid ${p.stroke};color:${p.stroke};">
+      <span class="lc-date">${d}</span><span class="lc-name">${n}</span>
+      <span class="lc-price">NT$${p.price.toLocaleString()}</span></div>`;
+  });
+  chipHtml+=`</div></div>`;
+
+  wrap.innerHTML = pillsHtml + chipHtml;
+
+  // Remove any leftover SVG overlay
+  const old = document.getElementById('launchSVG');
+  if(old) old.remove();
+  // Reset canvas/wrap heights
+  canvas.style.height = '';
+  canvas.parentElement.style.height = '380px';
+}
+
+function getLaunchKey(p){
+  const m=parseInt(p.launch.slice(4,6)), y=parseInt(p.launch.slice(0,4));
+  if(axis==='month') return p.launch.slice(0,4)+'/'+p.launch.slice(4,6);
+  if(axis==='quarter'){
+    let fy=m>=4?y:y-1;
+    let q=m>=4&&m<=6?'Q1':m>=7&&m<=9?'Q2':m>=10&&m<=12?'Q3':'Q4';
+    return 'FY'+String(fy).slice(2)+'-'+q;
+  }
+  return m>=4?'FY'+String(y).slice(2):'FY'+String(y-1).slice(2);
+}
+
+
+
+function showProductDetail(id){
+  const p = PRODUCTS_INFO.find(x=>x.id===id);
+  if(!p) return;
+  const isJa = lang==='ja';
+  const existing = document.getElementById('prodModal');
+  if(existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'prodModal';
+  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.35);z-index:1000;display:flex;align-items:center;justify-content:center;';
+  modal.onclick = e=>{ if(e.target===modal) modal.remove(); };
+
+  const yr = p.launch.slice(0,4), mo = p.launch.slice(4,6);
+  const launchDisp = yr+'/'+mo;
+  const priceOrig = p.orig ? `<span style="text-decoration:line-through;color:var(--tm);font-size:12px;">NT$${p.orig.toLocaleString()}</span>` : '';
+
+  modal.innerHTML = `
+  <div style="background:#fff;border-radius:16px;padding:24px 28px;max-width:480px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.18);position:relative;">
+    <button onclick="document.getElementById('prodModal').remove()" style="position:absolute;top:12px;right:16px;border:none;background:none;font-size:20px;cursor:pointer;color:var(--tm);">×</button>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+      <div style="width:6px;height:40px;border-radius:3px;background:${p.stroke};flex-shrink:0;"></div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:var(--tp);line-height:1.3;">${p.name}</div>
+        <div style="font-size:11px;color:var(--ts);margin-top:2px;">${isJa?'発売：':'發售：'}${launchDisp}　BCL活化月齢：${p.bcl}M〜</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+      <div style="background:${p.color}44;border-radius:10px;padding:10px 12px;">
+        <div style="font-size:9px;font-weight:700;color:${p.stroke};text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">${isJa?'售価':'售價'}</div>
+        <div style="font-size:18px;font-weight:700;color:var(--tp);">NT$${p.price.toLocaleString()}</div>
+        <div style="margin-top:2px;">${priceOrig}</div>
+      </div>
+      <div style="background:#f5f0ee;border-radius:10px;padding:10px 12px;">
+        <div style="font-size:9px;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">${isJa?'テーマ':'主題'}</div>
+        <div style="font-size:12px;font-weight:600;color:var(--tp);line-height:1.4;">${p.theme}</div>
+      </div>
+    </div>
+    <div style="background:#fafaf8;border-radius:10px;padding:10px 14px;margin-bottom:12px;">
+      <div style="font-size:9px;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;">${isJa?'対象・月齢':'對象・月齡'}</div>
+      <div style="font-size:12px;color:var(--tp);">${p.ageMin}（BCL ${p.bcl}M〜）</div>
+    </div>
+    <div style="background:#fafaf8;border-radius:10px;padding:10px 14px;">
+      <div style="font-size:9px;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;">${isJa?'主要構成':'主要內容'}</div>
+      <div style="font-size:12px;color:var(--tp);line-height:1.6;">${p.contents}</div>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+// ── Product info panel ──────────────────────
+function renderProductPanel(){
+  const isJa = lang==='ja';
+  const sorted = [...PRODUCTS_INFO].sort((a,b)=>b.price-a.price);
+  let html = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;">
+    <thead><tr>
+      <th style="text-align:left;padding:7px 10px;border-bottom:1.5px solid var(--bdr);background:var(--bg);color:var(--ts);font-weight:700;">#</th>
+      <th style="text-align:left;padding:7px 10px;border-bottom:1.5px solid var(--bdr);background:var(--bg);color:var(--ts);font-weight:700;">${isJa?'商品名':'商品名稱'}</th>
+      <th style="text-align:right;padding:7px 10px;border-bottom:1.5px solid var(--bdr);background:var(--bg);color:var(--ts);font-weight:700;">${isJa?'售価':'售價'}</th>
+      <th style="text-align:left;padding:7px 10px;border-bottom:1.5px solid var(--bdr);background:var(--bg);color:var(--ts);font-weight:700;">${isJa?'テーマ':'主題'}</th>
+      <th style="text-align:left;padding:7px 10px;border-bottom:1.5px solid var(--bdr);background:var(--bg);color:var(--ts);font-weight:700;">${isJa?'対象年齢':'對象年齡'}</th>
+      <th style="text-align:center;padding:7px 10px;border-bottom:1.5px solid var(--bdr);background:var(--bg);color:var(--ts);font-weight:700;">BCL</th>
+      <th style="text-align:center;padding:7px 10px;border-bottom:1.5px solid var(--bdr);background:var(--bg);color:var(--ts);font-weight:700;">${isJa?'発売':'發售'}</th>
+    </tr></thead><tbody>`;
+
+  sorted.forEach((p,i)=>{
+    const yr = p.launch.slice(0,4), mo = p.launch.slice(4,6);
+    const isNew24 = p.launch >= '202401';
+    html += `<tr onclick="showProductDetail(${p.id})" style="cursor:pointer;" onmouseover="this.style.background='#fdf5f7'" onmouseout="this.style.background=''">
+      <td style="padding:7px 10px;border-bottom:1px solid var(--bdr);">
+        <div style="width:10px;height:10px;border-radius:50%;background:${p.color};border:1.5px solid ${p.stroke};display:inline-block;"></div>
+      </td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--bdr);font-weight:600;color:var(--tp);">
+        ${p.name}
+        ${isNew24?`<span style="font-size:9px;background:${p.color};border:1px solid ${p.stroke};color:${p.stroke};padding:1px 5px;border-radius:8px;margin-left:4px;font-weight:700;">NEW</span>`:''}
+      </td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--bdr);text-align:right;font-weight:700;color:var(--tp);font-variant-numeric:tabular-nums;">
+        NT$${p.price.toLocaleString()}
+        ${p.orig?`<div style="font-size:9px;color:var(--tm);text-decoration:line-through;">NT$${p.orig.toLocaleString()}</div>`:''}
+      </td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--bdr);color:var(--ts);">${p.theme}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--bdr);color:var(--ts);">${p.ageMin}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--bdr);text-align:center;color:var(--ts);">${p.bcl}M</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--bdr);text-align:center;font-weight:600;color:${isNew24?p.stroke:'var(--ts)'};">${yr.slice(2)+'/'+mo}</td>
+    </tr>`;
+  });
+
+  html += `</tbody></table></div>
+  <p style="font-size:10px;color:var(--tm);margin-top:8px;">${isJa?'※ 行クリックで詳細を表示。NEWは2024年以降発売。':'※ 點擊列可顯示詳細。NEW 為2024年後發售商品。'}</p>`;
+  document.getElementById('productPanelContent').innerHTML = html;
+}
+
+// renderAllFull: renderAll + product UI refresh
+function renderAllFull(){
+  _renderAllBase();
+  renderLaunchTimeline();
+  const pc = document.getElementById('productPanelContent');
+  if(pc && pc.style.display !== 'none' && pc.innerHTML.length > 10) renderProductPanel();
+}
+
+
+// Launch chip CSS injected dynamically
+const chipStyle = document.createElement('style');
+chipStyle.textContent = `
+.launch-chip{
+  display:inline-flex;flex-direction:column;align-items:flex-start;
+  padding:5px 9px;border-radius:10px;cursor:pointer;
+  transition:transform .12s,box-shadow .12s;min-width:72px;
+}
+.launch-chip:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.12);}
+.lc-date{font-size:9px;font-weight:700;opacity:.8;letter-spacing:.3px;}
+.lc-name{font-size:10px;font-weight:700;line-height:1.25;margin:2px 0 1px;}
+.lc-price{font-size:9px;opacity:.75;}
+`;
+document.head.appendChild(chipStyle);
+
+let productPanelOpen = false;
+function toggleProductPanel(){
+  productPanelOpen = !productPanelOpen;
+  const el = document.getElementById('productPanelContent');
+  const btn = document.getElementById('btnToggleProd');
+  el.style.display = productPanelOpen ? 'block' : 'none';
+  if(productPanelOpen){
+    renderProductPanel();
+    btn.textContent = (lang==='ja'?'非表示 ▴':'收起 ▴');
+  } else {
+    btn.textContent = (lang==='ja'?'表示する ▾':'顯示 ▾');
+  }
+}
+
+
+
+// ══════════════════════════════════════════════
+// TAB SWITCHING
+// ══════════════════════════════════════════════
+let currentTab = 'sales';
+
+function switchTab(tab){
+  currentTab = tab;
+  document.getElementById('paneSales').style.display  = tab==='sales'  ? '' : 'none';
+  document.getElementById('paneBCL').style.display    = tab==='bcl'    ? '' : 'none';
+  document.getElementById('paneMember').style.display = tab==='member' ? '' : 'none';
+  ['tabSales','tabBCL','tabMember'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.classList.toggle('active',
+      id === 'tab' + tab.charAt(0).toUpperCase() + tab.slice(1));
+  });
+  if(tab==='bcl')    renderBCL();
+  if(tab==='member') renderMemberTab();
+}
+
+// ── Universal section toggle ────────────────
+function toggleSection(bodyId, arrowId){
+  const body  = document.getElementById(bodyId);
+  const arrow = document.getElementById(arrowId);
+  if(!body) return;
+  const open = body.style.display === 'none';
+  body.style.display = open ? '' : 'none';
+  if(arrow) arrow.textContent = open ? '▾' : '▸';
+}
+
+
+// ══════════════════════════════════════════════
+// BCL DATA
+// ══════════════════════════════════════════════
+const BCL = {
+  kpi:{ total_valid:148349, total_invalid:63710, total_all:212059, latest_cum:148349 },
+  monthly:{
+    "202404":{"valid":111,"invalid":33},"202405":{"valid":153,"invalid":29},
+    "202406":{"valid":131,"invalid":30},"202407":{"valid":194,"invalid":45},
+    "202408":{"valid":1508,"invalid":377},"202409":{"valid":2639,"invalid":775},
+    "202410":{"valid":1582,"invalid":375},"202411":{"valid":1700,"invalid":420},
+    "202412":{"valid":623,"invalid":107},"202501":{"valid":660,"invalid":133},
+    "202502":{"valid":871,"invalid":223},"202503":{"valid":1761,"invalid":426},
+    "202504":{"valid":3664,"invalid":916},"202505":{"valid":868,"invalid":189},
+    "202506":{"valid":981,"invalid":377},"202507":{"valid":1522,"invalid":493},
+    "202508":{"valid":1160,"invalid":325},"202509":{"valid":1395,"invalid":276},
+    "202510":{"valid":2014,"invalid":407},"202511":{"valid":1506,"invalid":270},
+    "202512":{"valid":1900,"invalid":390},"202601":{"valid":1843,"invalid":308},
+    "202602":{"valid":2131,"invalid":304},"202603":{"valid":4263,"invalid":261}
+  },
+  cum:{
+    "202401":112538,"202402":112969,"202403":113169,"202404":113280,"202405":113433,
+    "202406":113564,"202407":113758,"202408":115266,"202409":117905,"202410":119487,
+    "202411":121187,"202412":121810,"202501":122470,"202502":123341,"202503":125102,
+    "202504":128766,"202505":129634,"202506":130615,"202507":132137,"202508":133297,
+    "202509":134692,"202510":136706,"202511":138212,"202512":140112,
+    "202601":141955,"202602":144086,"202603":148349
+  },
+  // age_total: 現在月齢ベース（2026/04時点・DB全体の実態）
+  age_total:{
+    "未生（妊娠中）":1603,"SS: 7~12M":2687,"S: 0~6M":3180,"S: 13~24M":10723,
+    "AA: 25~36M":11630,"A: 37~60M":42860,"B: 61M+":75666
+  },
+  // age_by_month: 登録時月齢ベース（BCL活化開始時点の月齢）
+  age_by_month:{
+    "202404":{"未生（妊娠中）":4,"SS: 7~12M":8,"S: 0~6M":9,"S: 13~24M":28,"AA: 25~36M":21,"A: 37~60M":23,"B: 61M+":18},
+    "202405":{"未生（妊娠中）":6,"SS: 7~12M":16,"S: 0~6M":5,"S: 13~24M":40,"AA: 25~36M":27,"A: 37~60M":49,"B: 61M+":10},
+    "202406":{"未生（妊娠中）":12,"SS: 7~12M":19,"S: 0~6M":12,"S: 13~24M":36,"AA: 25~36M":22,"A: 37~60M":24,"B: 61M+":6},
+    "202407":{"未生（妊娠中）":12,"SS: 7~12M":28,"S: 0~6M":21,"S: 13~24M":63,"AA: 25~36M":29,"A: 37~60M":31,"B: 61M+":10},
+    "202408":{"未生（妊娠中）":395,"SS: 7~12M":195,"S: 0~6M":325,"S: 13~24M":391,"AA: 25~36M":125,"A: 37~60M":51,"B: 61M+":26},
+    "202409":{"未生（妊娠中）":455,"SS: 7~12M":496,"S: 0~6M":718,"S: 13~24M":734,"AA: 25~36M":104,"A: 37~60M":102,"B: 61M+":30},
+    "202410":{"未生（妊娠中）":280,"SS: 7~12M":227,"S: 0~6M":304,"S: 13~24M":572,"AA: 25~36M":119,"A: 37~60M":60,"B: 61M+":20},
+    "202411":{"未生（妊娠中）":316,"SS: 7~12M":243,"S: 0~6M":368,"S: 13~24M":468,"AA: 25~36M":144,"A: 37~60M":119,"B: 61M+":42},
+    "202412":{"未生（妊娠中）":72,"SS: 7~12M":90,"S: 0~6M":125,"S: 13~24M":209,"AA: 25~36M":64,"A: 37~60M":41,"B: 61M+":22},
+    "202501":{"未生（妊娠中）":43,"SS: 7~12M":79,"S: 0~6M":94,"S: 13~24M":224,"AA: 25~36M":136,"A: 37~60M":58,"B: 61M+":26},
+    "202502":{"未生（妊娠中）":34,"SS: 7~12M":127,"S: 0~6M":149,"S: 13~24M":253,"AA: 25~36M":161,"A: 37~60M":100,"B: 61M+":47},
+    "202503":{"未生（妊娠中）":68,"SS: 7~12M":290,"S: 0~6M":376,"S: 13~24M":513,"AA: 25~36M":302,"A: 37~60M":166,"B: 61M+":46},
+    "202504":{"未生（妊娠中）":238,"SS: 7~12M":646,"S: 0~6M":846,"S: 13~24M":997,"AA: 25~36M":523,"A: 37~60M":304,"B: 61M+":110},
+    "202505":{"未生（妊娠中）":143,"SS: 7~12M":141,"S: 0~6M":105,"S: 13~24M":237,"AA: 25~36M":149,"A: 37~60M":66,"B: 61M+":27},
+    "202506":{"未生（妊娠中）":170,"SS: 7~12M":117,"S: 0~6M":105,"S: 13~24M":231,"AA: 25~36M":162,"A: 37~60M":125,"B: 61M+":71},
+    "202507":{"未生（妊娠中）":339,"SS: 7~12M":253,"S: 0~6M":160,"S: 13~24M":322,"AA: 25~36M":231,"A: 37~60M":142,"B: 61M+":75},
+    "202508":{"未生（妊娠中）":281,"SS: 7~12M":123,"S: 0~6M":110,"S: 13~24M":252,"AA: 25~36M":195,"A: 37~60M":124,"B: 61M+":75},
+    "202509":{"未生（妊娠中）":221,"SS: 7~12M":194,"S: 0~6M":150,"S: 13~24M":384,"AA: 25~36M":248,"A: 37~60M":133,"B: 61M+":65},
+    "202510":{"未生（妊娠中）":297,"SS: 7~12M":208,"S: 0~6M":178,"S: 13~24M":471,"AA: 25~36M":365,"A: 37~60M":338,"B: 61M+":157},
+    "202511":{"未生（妊娠中）":312,"SS: 7~12M":162,"S: 0~6M":155,"S: 13~24M":374,"AA: 25~36M":269,"A: 37~60M":170,"B: 61M+":64},
+    "202512":{"未生（妊娠中）":513,"SS: 7~12M":319,"S: 0~6M":221,"S: 13~24M":412,"AA: 25~36M":228,"A: 37~60M":121,"B: 61M+":86},
+    "202601":{"未生（妊娠中）":577,"SS: 7~12M":150,"S: 0~6M":220,"S: 13~24M":286,"AA: 25~36M":209,"A: 37~60M":246,"B: 61M+":155},
+    "202602":{"未生（妊娠中）":620,"SS: 7~12M":234,"S: 0~6M":272,"S: 13~24M":444,"AA: 25~36M":270,"A: 37~60M":182,"B: 61M+":109},
+    "202603":{"未生（妊娠中）":565,"SS: 7~12M":600,"S: 0~6M":593,"S: 13~24M":1037,"AA: 25~36M":729,"A: 37~60M":536,"B: 61M+":203}
+  }
+};
+
+// ── Rank-based bucket definitions ─────────
+const BCL_RANK_ORDER = ['未生（妊娠中）','SS: 7~12M','S: 0~6M','S: 13~24M','AA: 25~36M','A: 37~60M','B: 61M+'];
+
+const BCL_RANK_LABEL_JA = {
+  '未生（妊娠中）':'A 孕期',
+  'SS: 7~12M':  'SS 7〜12M',
+  'S: 0~6M':    'S  0〜6M',
+  'S: 13~24M':  'S  13〜24M',
+  'AA: 25~36M': 'AA 25〜36M',
+  'A: 37~60M':  'A  37〜60M',
+  'B: 61M+':    'B  61M+'
+};
+const BCL_RANK_LABEL_ZH = {
+  '未生（妊娠中）':'A 孕期',
+  'SS: 7~12M':  'SS 7〜12M',
+  'S: 0~6M':    'S  0〜6M',
+  'S: 13~24M':  'S  13〜24M',
+  'AA: 25~36M': 'AA 25〜36M',
+  'A: 37~60M':  'A  37〜60M',
+  'B: 61M+':    'B  61M+'
+};
+
+const BCL_RANK_COLORS  = ['#f4d4b8','#f4b8c1','#b8d8f4','#b8cef8','#b8f4ce','#f4e4b8','#e0dcd8'];
+const BCL_RANK_COLORSD = ['#c87040','#c8707e','#5a9fd4','#4a80c8','#3eb86a','#c89830','#9a9490'];
+
+const BCL_RANK_BADGE = {
+  '未生（妊娠中）': {bg:'#f4d4b8',border:'#c87040',text:'#502000',label:'A'},
+  'SS: 7~12M':   {bg:'#f4b8c1',border:'#c8707e',text:'#7a1020',label:'SS'},
+  'S: 0~6M':     {bg:'#b8d8f4',border:'#5a9fd4',text:'#1a3060',label:'S'},
+  'S: 13~24M':   {bg:'#b8cef8',border:'#4a80c8',text:'#1a2060',label:'S'},
+  'AA: 25~36M':  {bg:'#b8f4ce',border:'#3eb86a',text:'#0a4020',label:'AA'},
+  'A: 37~60M':   {bg:'#f4e4b8',border:'#c89830',text:'#503000',label:'A'},
+  'B: 61M+':     {bg:'#e0dcd8',border:'#9a9490',text:'#504840',label:'B'},
+};
+
+// Aliases
+const BCL_AGE_BUCKETS  = BCL_RANK_ORDER;
+const BCL_AGE_COLORS   = BCL_RANK_COLORS;
+const BCL_AGE_COLORSD  = BCL_RANK_COLORSD;
+const AGE_LABEL_JA = BCL_RANK_LABEL_JA;
+const AGE_LABEL_ZH = BCL_RANK_LABEL_ZH;
+
+
+let bclMonthlyChartObj=null, bclCumChartObj=null, bclAgeChartObj=null, bclDonutChartObj=null;
+let bclAgeMode='abs';
+function setBclAgeMode(m){
+  bclAgeMode=m;
+  document.getElementById('bclAgeAbs').classList.toggle('active',m==='abs');
+  document.getElementById('bclAgePct').classList.toggle('active',m==='pct');
+  renderBclAgeChart();
+}
+
+// ── BCL KPI ────────────────────────────────
+function renderBclKPI(){
+  const isJa = lang==='ja';
+  const b = BCL.kpi;
+  const totalAge = Object.values(BCL.age_total).reduce((s,v)=>s+v,0);
+
+  const ssNow  = BCL.age_total['SS: 7~12M'];
+  const sNow   = BCL.age_total['S: 0~6M'] + BCL.age_total['S: 13~24M'];
+  const aaNow  = BCL.age_total['AA: 25~36M'];
+  const corePct = ((ssNow+sNow+aaNow)/totalAge*100).toFixed(0);
+
+  const months = Object.keys(BCL.monthly).sort();
+  const latestM = months[months.length-1];
+  const latestValid = BCL.monthly[latestM].valid;
+
+  const summaryPanels = [
+    {label:isJa?'有効会員 累計':'有效會員 累計',    val:b.total_valid.toLocaleString(),  sub:'LINE UID', cls:'c2'},
+    {label:isJa?'無効会員（封鎖）':'無效會員（封鎖）',val:b.total_invalid.toLocaleString(),sub:'LINE UID', cls:'c1'},
+    {label:isJa?'DB総数':'DB總數',                  val:b.total_all.toLocaleString(),    sub:'LINE UID', cls:'c0'},
+    {label:isJa?'最新月 新規有効':'最新月 新規有效',  val:latestValid.toLocaleString(),    sub:latestM.slice(0,4)+'/'+latestM.slice(4,6), cls:'c4'},
+    {label:isJa?'最新累計':'最新累計',               val:b.latest_cum.toLocaleString(),   sub:isJa?'有効会員':'有效會員', cls:'c5'},
+    {label:isJa?'SS+S+AA（現在月齢）':'SS+S+AA（現齡）',val:(ssNow+sNow+aaNow).toLocaleString(),sub:corePct+'%', cls:'c3'},
+  ];
+
+  const noteText = isJa ? '※ 現在月齢ベース（2026/04時点・生年月から算出）' : '※ 現齡基準（2026/04時點・依出生月計算）';
+  const rankPanels = BCL_RANK_ORDER.map(r=>{
+    const badge = BCL_RANK_BADGE[r];
+    const v     = BCL.age_total[r];
+    const pct   = (v/totalAge*100).toFixed(1);
+    return `<div style="background:${badge.bg};border:1.5px solid ${badge.border};border-radius:var(--r);padding:10px 12px;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:6px;right:8px;font-size:11px;font-weight:800;color:${badge.border};opacity:.4;">${badge.label}</div>
+      <div style="font-size:9px;font-weight:700;color:${badge.border};letter-spacing:.4px;margin-bottom:4px;">${BCL_RANK_LABEL_JA[r]}</div>
+      <div style="font-size:17px;font-weight:700;color:var(--tp);line-height:1;">${v.toLocaleString()}</div>
+      <div style="font-size:10px;color:${badge.border};margin-top:3px;font-weight:600;">${pct}%</div>
+    </div>`;
+  });
+
+  document.getElementById('bclKpiGrid').innerHTML =
+    `<div style="grid-column:1/-1;display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:8px;">
+      ${summaryPanels.map(p=>`
+        <div class="kpi ${p.cls}">
+          <div class="kpi-lbl">${p.label}</div>
+          <div class="kpi-val" style="font-size:15px;">${p.val}</div>
+          <div class="kpi-sub">${p.sub}</div>
+        </div>`).join('')}
+    </div>
+    <div style="grid-column:1/-1;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+        <div style="font-size:10px;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:.5px;">${isJa?'月齢ランク別 会員数（DB全体）':'月齡等級別 會員數（DB全體）'}</div>
+        <div style="font-size:10px;color:var(--m1d);font-weight:600;">${noteText}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;">
+        ${rankPanels.join('')}
+      </div>
+    </div>`;
+}
+
+
+// ── BCL Insight Banner ─────────────────────
+function renderBclInsight(){
+  const isJa = lang==='ja';
+  const total = Object.values(BCL.age_total).reduce((s,v)=>s+v,0);
+  const ss  = BCL.age_total['SS: 7~12M'];
+  const s06 = BCL.age_total['S: 0~6M'];
+  const s24 = BCL.age_total['S: 13~24M'];
+  const aa  = BCL.age_total['AA: 25~36M'];
+  const a   = BCL.age_total['A: 37~60M'];
+  const preg= BCL.age_total['未生（妊娠中）'];
+  const b   = BCL.age_total['B: 61M+'];
+  const ssPct  = (ss /total*100).toFixed(1);
+  const sPct   = ((s06+s24)/total*100).toFixed(1);
+  const aaPct  = (aa /total*100).toFixed(1);
+  const bPct   = (b  /total*100).toFixed(1);
+  const corePct= ((ss+s06+s24+aa)/total*100).toFixed(0);
+
+  if(isJa){
+    document.getElementById('bclInsight').innerHTML = `
+      <strong>💡 DB月齢ランク分析（現在月齢・2026/04時点）と売上の関係性</strong><br>
+      <span style="color:#9a9490;font-weight:600;">⚠️ 注意：KPI・ドーナツは現在月齢（生年月日→今日算出）。月次グラフは登録時月齢（BCL活化開始時点）。</span><br><br>
+      現在月齢で見ると、<strong style="color:#9a9490;">B（61M+）が${b.toLocaleString()}件・${bPct}%と過半数</strong>を占めDBの高齢化が進んでいます。
+      <strong style="color:#c8707e;">SS（7〜12M）はわずか${ss.toLocaleString()}件（${ssPct}%）</strong>、S+SS合計でも${(ss+s06+s24).toLocaleString()}件（${(+(ssPct)+ +(sPct)).toFixed(1)}%）に留まります。<br>
+      ただし直近（25/12〜26/03）は妊娠期の新規登録が急増（月${preg.toLocaleString()}件ペース）しており、
+      <strong>6〜12か月後にSS層として転換するパイプライン</strong>が形成されつつある点は前向きな兆候です。<br>
+      BCLからLINEでSS・S月齢のタイミングに正確にアプローチするほど購買転換率が上がる構造です。
+      DBの厚みを維持しながら月齢精度の高い配信が売上向上の核心といえます。`;
+  } else {
+    document.getElementById('bclInsight').innerHTML = `
+      <strong>💡 DB月齡等級分析（現齡・2026/04時點）與銷售關聯</strong><br>
+      <span style="color:#9a9490;font-weight:600;">⚠️ 注意：KPI・圓餅圖為現齡（依出生月計算）。月次圖表為登錄時月齡（BCL活化當時）。</span><br><br>
+      以現齡來看，<strong style="color:#9a9490;">B（61M+）佔${b.toLocaleString()}件・${bPct}%，DB高齡化明顯。</strong>
+      <strong style="color:#c8707e;">SS（7〜12M）僅${ss.toLocaleString()}件（${ssPct}%）</strong>，SS+S合計也只有${(ss+s06+s24).toLocaleString()}件（${(+(ssPct)+ +(sPct)).toFixed(1)}%）。<br>
+      但近期（25/12〜26/03）妊娠期新規登錄急增，<strong>6〜12個月後將轉換為SS層的管道</strong>正在形成，為正面信號。<br>
+      透過BCL對SS・S月齡精準推播，是提升購買轉換率的關鍵。維持DB厚度並提高月齡精度，是銷售成長的核心。`;
+  }
+}
+
+
+// ── Monthly BCL Chart ──────────────────────
+function renderBclMonthlyChart(){
+  const months = Object.keys(BCL.monthly).sort();
+  const labels = months.map(m=>m.slice(2,4)+'/'+m.slice(4,6));
+  const validVals   = months.map(m=>BCL.monthly[m].valid);
+  const invalidVals = months.map(m=>BCL.monthly[m].invalid);
+
+  if(bclMonthlyChartObj) bclMonthlyChartObj.destroy();
+  bclMonthlyChartObj = new Chart(document.getElementById('bclMonthlyChart').getContext('2d'),{
+    type:'bar',
+    data:{ labels, datasets:[
+      { label: lang==='ja'?'有効会員':'有效會員', data:validVals,
+        backgroundColor:'#b8d8f4cc', borderColor:'#5a9fd4', borderWidth:1.5, borderRadius:3,
+        datalabels:{display:ctx=>ctx.dataset.data[ctx.dataIndex]>=200,anchor:'end',align:'top',
+          formatter:v=>v.toLocaleString(),font:{size:8,weight:'600'},color:'#5a9fd4'}},
+      { label: lang==='ja'?'無効会員（封鎖）':'無效會員（封鎖）', data:invalidVals,
+        backgroundColor:'#f4b8c1cc', borderColor:'#c8707e', borderWidth:1.5, borderRadius:3,
+        datalabels:{display:false}},
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{position:'top',labels:{font:{size:10},boxWidth:10}},
+        tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}`}}
+      },
+      scales:{
+        x:{ticks:{font:{size:9},maxRotation:45},grid:{color:'#f0ebe5'}},
+        y:{ticks:{font:{size:10},callback:v=>v.toLocaleString()},grid:{color:'#f0ebe5'}}
+      }
+    },
+    plugins:[ChartDataLabels]
+  });
+}
+
+// ── Cumulative BCL Chart ───────────────────
+function renderBclCumChart(){
+  const months = Object.keys(BCL.cum).sort();
+  const labels = months.map(m=>m.slice(2,4)+'/'+m.slice(4,6));
+  const vals   = months.map(m=>BCL.cum[m]);
+  const maxV   = Math.max(...vals);
+
+  if(bclCumChartObj) bclCumChartObj.destroy();
+  bclCumChartObj = new Chart(document.getElementById('bclCumChart').getContext('2d'),{
+    type:'line',
+    data:{ labels, datasets:[{
+      label: lang==='ja'?'累計有効会員数':'累計有效會員數',
+      data: vals,
+      borderColor:'#5a9fd4', backgroundColor:'#b8d8f440',
+      borderWidth:2.5, pointRadius:2, pointHoverRadius:5, tension:0.3, fill:true,
+      datalabels:{
+        display:ctx=>{
+          const i=ctx.dataIndex, d=ctx.dataset.data;
+          // show only at milestones: first, last, local peaks
+          if(i===0||i===d.length-1) return true;
+          // show at 110k, 120k, 130k, 140k crossings
+          const milestones=[110000,120000,130000,140000];
+          return milestones.some(ms=>d[i]>=ms&&d[i-1]<ms);
+        },
+        anchor:'top',align:'top',
+        formatter:v=>(v/10000).toFixed(1)+'万',
+        font:{size:9,weight:'700'},color:'#5a9fd4',offset:2
+      }
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}`}}
+      },
+      scales:{
+        x:{ticks:{font:{size:9},maxRotation:45},grid:{color:'#f0ebe5'}},
+        y:{ticks:{font:{size:10},callback:v=>(v/10000).toFixed(0)+'万'},grid:{color:'#f0ebe5'},
+           suggestedMin:100000,suggestedMax:maxV*1.05}
+      }
+    },
+    plugins:[ChartDataLabels]
+  });
+}
+
+// ── Age × Month Chart ──────────────────────
+function renderBclAgeChart(){
+  const months = Object.keys(BCL.age_by_month).sort();
+  const labels = months.map(m=>m.slice(2,4)+'/'+m.slice(4,6));
+  const isPct  = bclAgeMode==='pct';
+
+  // totals per month for % calc
+  const monthTotals = months.map(m=>BCL_AGE_BUCKETS.reduce((s,b)=>s+(BCL.age_by_month[m][b]||0),0));
+
+  const datasets = BCL_AGE_BUCKETS.map((b,i)=>({
+    label: lang==='ja'?AGE_LABEL_JA[b]:AGE_LABEL_ZH[b],
+    data: months.map((m,mi)=>{
+      const v = BCL.age_by_month[m][b]||0;
+      return isPct ? (monthTotals[mi]>0 ? +(v/monthTotals[mi]*100).toFixed(1) : 0) : v;
+    }),
+    backgroundColor: BCL_AGE_COLORS[i]+'cc',
+    borderColor: BCL_AGE_COLORSD[i],
+    borderWidth:1, borderRadius:0,
+    datalabels:{
+      display:ctx=>{const v=ctx.dataset.data[ctx.dataIndex]; return isPct?v>=8:v>=100;},
+      anchor:'center',align:'center',
+      formatter:v=>isPct?v.toFixed(0)+'%':v.toLocaleString(),
+      font:{size:8,weight:'700'},color:'#333'
+    }
+  }));
+
+  if(bclAgeChartObj) bclAgeChartObj.destroy();
+  bclAgeChartObj = new Chart(document.getElementById('bclAgeChart').getContext('2d'),{
+    type:'bar',
+    data:{ labels, datasets },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{position:'top',labels:{font:{size:10},boxWidth:10,padding:10}},
+        tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${isPct?ctx.parsed.y+'%':ctx.parsed.y.toLocaleString()}`}}
+      },
+      scales:{
+        x:{stacked:true,ticks:{font:{size:9},maxRotation:45},grid:{display:false}},
+        y:{stacked:true,ticks:{font:{size:10},callback:v=>isPct?v+'%':v.toLocaleString()},
+           grid:{color:'#f0ebe5'},max:isPct?100:undefined}
+      }
+    },
+    plugins:[ChartDataLabels]
+  });
+}
+
+// ── Age Donut ──────────────────────────────
+function renderBclDonut(){
+  const total = Object.values(BCL.age_total).reduce((s,v)=>s+v,0);
+  const labels= BCL_AGE_BUCKETS.map(b=>lang==='ja'?AGE_LABEL_JA[b]:AGE_LABEL_ZH[b]);
+  const vals  = BCL_AGE_BUCKETS.map(b=>BCL.age_total[b]);
+
+  if(bclDonutChartObj) bclDonutChartObj.destroy();
+  bclDonutChartObj = new Chart(document.getElementById('bclDonutChart').getContext('2d'),{
+    type:'doughnut',
+    data:{ labels, datasets:[{data:vals,
+      backgroundColor:BCL_AGE_COLORS.map(c=>c+'cc'),
+      borderColor:BCL_AGE_COLORSD, borderWidth:1.5}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,cutout:'55%',
+      plugins:{
+        legend:{position:'right',labels:{font:{size:10},boxWidth:11,padding:8}},
+        tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed.toLocaleString()} (${(ctx.parsed/total*100).toFixed(1)}%)`}}
+      },
+      datalabels:{display:false}
+    }
+  });
+}
+
+// ── Age Table ──────────────────────────────
+function renderBclAgeTable(){
+  const isJa = lang==='ja';
+  const months = Object.keys(BCL.age_by_month).sort();
+  const bkts   = BCL_AGE_BUCKETS;
+  let html=`<table style="width:100%;border-collapse:collapse;font-size:11px;">
+    <thead><tr>
+      <th style="text-align:left;padding:5px 8px;border-bottom:1.5px solid var(--bdr);background:var(--bg);color:var(--ts);white-space:nowrap;">${isJa?'年月':'年月'}</th>
+      ${bkts.map((b,i)=>`<th style="text-align:right;padding:5px 8px;border-bottom:1.5px solid var(--bdr);background:var(--bg);color:${BCL_AGE_COLORSD[i]};font-weight:700;white-space:nowrap;">${isJa?AGE_LABEL_JA[b]:AGE_LABEL_ZH[b]}</th>`).join('')}
+      <th style="text-align:right;padding:5px 8px;border-bottom:1.5px solid var(--bdr);background:var(--bg);color:var(--ts);font-weight:700;">${isJa?'合計':'合計'}</th>
+    </tr></thead><tbody>`;
+
+  months.forEach(m=>{
+    const row = BCL.age_by_month[m];
+    const total = bkts.reduce((s,b)=>s+(row[b]||0),0);
+    const label = m.slice(0,4)+'/'+m.slice(4,6);
+    html += `<tr onmouseover="this.style.background='#fdf5f7'" onmouseout="this.style.background=''">
+      <td style="padding:5px 8px;border-bottom:1px solid var(--bdr);font-weight:600;">${label}</td>
+      ${bkts.map(b=>`<td style="padding:5px 8px;border-bottom:1px solid var(--bdr);text-align:right;font-variant-numeric:tabular-nums;">${(row[b]||0).toLocaleString()}</td>`).join('')}
+      <td style="padding:5px 8px;border-bottom:1px solid var(--bdr);text-align:right;font-weight:700;">${total.toLocaleString()}</td>
+    </tr>`;
+  });
+
+  // Totals row
+  const totals = bkts.map(b=>BCL.age_total[b]);
+  const grandTotal = totals.reduce((s,v)=>s+v,0);
+  html+=`<tr style="background:#fdf8f5;font-weight:700;">
+    <td style="padding:5px 8px;border-top:1.5px solid var(--bdr);">${isJa?'合計':'合計'}</td>
+    ${totals.map(v=>`<td style="padding:5px 8px;border-top:1.5px solid var(--bdr);text-align:right;">${v.toLocaleString()}</td>`).join('')}
+    <td style="padding:5px 8px;border-top:1.5px solid var(--bdr);text-align:right;">${grandTotal.toLocaleString()}</td>
+  </tr>`;
+  html+=`</tbody></table>`;
+  document.getElementById('bclAgeTable').innerHTML = html;
+}
+
+// ── Main BCL render ────────────────────────
+function renderBCL(){
+  renderBclKPI();
+  renderBclInsight();
+  renderBclMonthlyChart();
+  renderBclCumChart();
+  renderBclAgeChart();
+  renderBclDonut();
+  renderBclAgeTable();
+}
+
+
+
+// ══════════════════════════════════════════════
+// MEMBER RATIO DATA + RENDER FUNCTIONS
+// ══════════════════════════════════════════════
+const MEMBER_RATIO = {
+  "202404":{"new":7,"old":93},"202405":{"new":9,"old":91},"202406":{"new":7,"old":93},
+  "202407":{"new":42,"old":58},"202408":{"new":22,"old":78},"202409":{"new":27,"old":73},
+  "202410":{"new":49,"old":51},"202411":{"new":46,"old":54},"202412":{"new":38,"old":62},
+  "202501":{"new":42,"old":58},"202502":{"new":37,"old":63},"202503":{"new":45,"old":55},
+  "202504":{"new":56,"old":44},"202505":{"new":51,"old":49},"202506":{"new":46,"old":54},
+  "202507":{"new":47,"old":53},"202508":{"new":55,"old":45},"202509":{"new":61,"old":39},
+  "202510":{"new":62,"old":38},"202511":{"new":72,"old":28},"202512":{"new":64,"old":36},
+  "202601":{"new":74,"old":26},"202602":{"new":80,"old":20}
+};
+const MEMBER_CROSSOVER = Object.entries(MEMBER_RATIO).find(([,v])=>v.new>v.old)?.[0];
+
+let memberChartObj=null, memberTrendChartObj=null;
+
+function renderMemberTab(){
+  renderMemberKPI();
+  renderMemberInsight();
+  renderMemberChart();
+  renderMemberTrend();
+}
+
+function renderMemberKPI(){
+  const isJa = lang==='ja';
+  const months = Object.keys(MEMBER_RATIO).sort();
+  const latest = MEMBER_RATIO[months[months.length-1]];
+  const crossM = MEMBER_CROSSOVER;
+  const crossLabel = crossM ? crossM.slice(0,4)+'/'+crossM.slice(4,6) : '—';
+  const beforeCross = months.filter(m=>m<crossM);
+  const afterCross  = months.filter(m=>m>=crossM);
+  const avgBefore = Math.round(beforeCross.reduce((s,m)=>s+MEMBER_RATIO[m].new,0)/beforeCross.length);
+  const avgAfter  = Math.round(afterCross.reduce((s,m)=>s+MEMBER_RATIO[m].new,0)/afterCross.length);
+  const panels = [
+    {label:isJa?'最新月 新会員比率':'最新月 新會員比例',
+     val:latest.new+'%', sub:months[months.length-1].slice(0,4)+'/'+months[months.length-1].slice(4,6),
+     bg:'#b8d8f4',bd:'#5a9fd4',tx:'#1a3060'},
+    {label:isJa?'最新月 旧講座会員':'最新月 舊講座會員',
+     val:latest.old+'%', sub:'—', bg:'#f4d4b8',bd:'#c87040',tx:'#502000'},
+    {label:isJa?'逆転月（初めて新>旧）':'逆轉月（新首超舊）',
+     val:crossLabel, sub:isJa?'新会員が初めて過半数超':'新會員首次超過半數',
+     bg:'#b8f4ce',bd:'#3eb86a',tx:'#0a4020'},
+    {label:isJa?'逆転前 新会員平均':'逆轉前 新會員平均',
+     val:avgBefore+'%', sub:'FY24〜25/03', bg:'#f4e4b8',bd:'#c89830',tx:'#503000'},
+    {label:isJa?'逆転後 新会員平均':'逆轉後 新會員平均',
+     val:avgAfter+'%', sub:'25/04〜現在', bg:'#b8d8f4',bd:'#5a9fd4',tx:'#1a3060'},
+  ];
+  document.getElementById('memberKpiGrid').innerHTML = panels.map(p=>`
+    <div style="background:${p.bg};border:1.5px solid ${p.bd};border-radius:var(--r);padding:12px 14px;">
+      <div style="font-size:9px;font-weight:700;color:${p.bd};text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;">${p.label}</div>
+      <div style="font-size:20px;font-weight:700;color:var(--tp);line-height:1;">${p.val}</div>
+      <div style="font-size:10px;color:${p.bd};margin-top:4px;">${p.sub}</div>
+    </div>`).join('');
+}
+
+function renderMemberInsight(){
+  const isJa = lang==='ja';
+  const crossLabel = MEMBER_CROSSOVER ? MEMBER_CROSSOVER.slice(0,4)+'/'+MEMBER_CROSSOVER.slice(4,6) : '—';
+  const months = Object.keys(MEMBER_RATIO).sort();
+  const latest = MEMBER_RATIO[months[months.length-1]];
+  const latestLabel = months[months.length-1].slice(0,4)+'/'+months[months.length-1].slice(4,6);
+  const list = document.getElementById('memberInsightList');
+  if(!list) return;
+  if(isJa){
+    list.innerHTML = [
+      `FY24前半（24/04〜06）は旧講座会員が <span class="hn">93%</span> を占め、月講座終了前の「既存顧客頼み」構造が鮮明。`,
+      `24/07以降、KOL大型施策を契機に新会員比率が急上昇。新体制移行（24/10）と重なり、販売チャネルの多様化が進展。`,
+      `<strong>${crossLabel}（25/04）に逆転達成</strong> — 新会員比率が初めて <span class="hp">56%</span> と過半数を超え、構造転換を確認。`,
+      `以降は新会員主導が定着。最新月（${latestLabel}）は新会員 <span class="hp">${latest.new}%</span>、旧講座会員 ${latest.old}% に。`,
+      `月講座（巧連智定期便）終了後も新規獲得で売上を維持・拡大できている点は、<strong>ビジネスモデル転換の成功</strong>を示す重要指標。`,
+    ].map(t=>`<li>${t}</li>`).join('');
+  } else {
+    list.innerHTML = [
+      `FY24前半（24/04〜06）舊講座會員佔比高達 <span class="hn">93%</span>，呈現「舊客戶依賴」結構。`,
+      `24/07起，受KOL大型活動帶動，新會員比例急升，恰逢新體制移行（24/10），銷售管道多元化持續推進。`,
+      `<strong>${crossLabel}（25/04）達成逆轉</strong> — 新會員比例首次突破 <span class="hp">56%</span>，結構性轉變獲得確認。`,
+      `此後新會員主導格局確立。最新月（${latestLabel}）新會員 <span class="hp">${latest.new}%</span>，舊講座會員 ${latest.old}%。`,
+      `月刊講座終止後，仍能靠新客戶維持並擴大銷售，是<strong>商業模式轉型成功</strong>的重要指標。`,
+    ].map(t=>`<li>${t}</li>`).join('');
+  }
+}
+
+function renderMemberChart(){
+  const isJa = lang==='ja';
+  const months = Object.keys(MEMBER_RATIO).sort();
+  const labels  = months.map(m=>m.slice(2,4)+'/'+m.slice(4,6));
+  const newVals = months.map(m=>MEMBER_RATIO[m].new);
+  const oldVals = months.map(m=>MEMBER_RATIO[m].old);
+  if(memberChartObj) memberChartObj.destroy();
+  memberChartObj = new Chart(document.getElementById('memberChart').getContext('2d'),{
+    type:'bar',
+    data:{ labels, datasets:[
+      { label:isJa?'新会員':'新會員', data:newVals,
+        backgroundColor:'#b8d8f4cc', borderColor:'#5a9fd4', borderWidth:1.5,
+        datalabels:{display:ctx=>ctx.dataset.data[ctx.dataIndex]>=15,
+          anchor:'center',align:'center',formatter:v=>v+'%',font:{size:9,weight:'700'},color:'#1a3060'}},
+      { label:isJa?'旧講座会員':'舊講座會員', data:oldVals,
+        backgroundColor:'#f4d4b8cc', borderColor:'#c87040', borderWidth:1.5,
+        datalabels:{display:ctx=>ctx.dataset.data[ctx.dataIndex]>=15,
+          anchor:'center',align:'center',formatter:v=>v+'%',font:{size:9,weight:'700'},color:'#5a2000'}},
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{position:'top',labels:{font:{size:11},boxWidth:12}},
+        tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y}%`}}
+      },
+      scales:{
+        x:{stacked:true, ticks:{font:{size:9},maxRotation:45}, grid:{display:false}},
+        y:{stacked:true, max:100, ticks:{font:{size:10},callback:v=>v+'%'}, grid:{color:'#f0ebe5'}}
+      }
+    }, plugins:[ChartDataLabels]
+  });
+  const crossLabel = MEMBER_CROSSOVER ? MEMBER_CROSSOVER.slice(0,4)+'/'+MEMBER_CROSSOVER.slice(4,6) : '—';
+  const el = document.getElementById('memberCrossover');
+  if(el) el.innerHTML = isJa
+    ? `🔁 <strong>${crossLabel}</strong> 以降、新会員が過半数超。最新月は新会員 <strong>${newVals[newVals.length-1]}%</strong>。`
+    : `🔁 <strong>${crossLabel}</strong> 後新會員超過半數。最新月新會員 <strong>${newVals[newVals.length-1]}%</strong>。`;
+}
+
+function renderMemberTrend(){
+  const isJa = lang==='ja';
+  const months  = Object.keys(MEMBER_RATIO).sort();
+  const labels  = months.map(m=>m.slice(2,4)+'/'+m.slice(4,6));
+  const newVals = months.map(m=>MEMBER_RATIO[m].new);
+  const crossIdx= months.indexOf(MEMBER_CROSSOVER);
+  if(memberTrendChartObj) memberTrendChartObj.destroy();
+  memberTrendChartObj = new Chart(document.getElementById('memberTrendChart').getContext('2d'),{
+    type:'line',
+    data:{ labels, datasets:[
+      { label:isJa?'新会員比率':'新會員比例', data:newVals,
+        borderColor:'#5a9fd4', backgroundColor:'#b8d8f440',
+        borderWidth:2.5, pointRadius:3, pointHoverRadius:6, tension:0.3, fill:true,
+        datalabels:{
+          display:ctx=>{
+            const i=ctx.dataIndex,d=ctx.dataset.data;
+            if(i===0||i===d.length-1||i===crossIdx) return true;
+            return d[i]>=(d[i-1]||0)&&d[i]>=(d[i+1]||0)&&d[i]>=55;
+          },
+          anchor:'top',align:'top',formatter:v=>v+'%',
+          font:{size:9,weight:'700'},color:'#5a9fd4',offset:2
+        }},
+      { label:'50%', data:months.map(()=>50),
+        borderColor:'#c0392b', borderWidth:1.5, borderDash:[6,4],
+        pointRadius:0, backgroundColor:'transparent', datalabels:{display:false}},
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{position:'top',labels:{font:{size:10},boxWidth:12,filter:i=>i.text!=='50%'}},
+        tooltip:{callbacks:{label:ctx=>ctx.dataset.label==='50%'?null:` ${ctx.dataset.label}: ${ctx.parsed.y}%`}}
+      },
+      scales:{
+        x:{ticks:{font:{size:9},maxRotation:45},grid:{color:'#f0ebe5'}},
+        y:{min:0,max:100,ticks:{font:{size:10},callback:v=>v+'%'},grid:{color:'#f0ebe5'}}
+      }
+    }, plugins:[ChartDataLabels]
+  });
+}
+
+
+function setLang(l){
+  lang = l;
+  applyI18n();
+  renderTagsUI();
+  if(currentTab==='bcl')         renderBCL();
+  else if(currentTab==='member') renderMemberTab();
+  else                           renderAllFull();
+}
+</script>
+
+>
+
+<!-- PRODUCT INFO PANEL (after table card) -->
+<div class="table-card" style="margin-top:12px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+    <div class="table-title" data-i18n="prodTitle">學習商品 商品一覧</div>
+    <button onclick="toggleProductPanel()" id="btnToggleProd"
+      style="border:1.5px solid var(--bdr);background:var(--sur);color:var(--ts);font-size:11px;font-weight:600;padding:5px 14px;border-radius:20px;cursor:pointer;font-family:inherit;transition:all .12s;"
+      data-i18n="prodToggle">表示する ▾</button>
+  </div>
+  <div id="productPanelContent" style="display:none;"></div>
+</div>
+
+</div><!-- /paneSales -->
+
+<!-- TAB: BCL DB -->
+<div id="paneBCL" style="display:none;">
+
+  <!-- BCL KPI -->
+  <div class="kpi-grid" id="bclKpiGrid" style="grid-template-columns:1fr;gap:10px;"></div>
+
+  <!-- Insight banner -->
+  <div style="background:#f0f8ff;border:1px solid #b8d8f4;border-radius:var(--r);margin-bottom:12px;">
+    <div style="display:flex;align-items:center;gap:6px;padding:11px 16px;cursor:pointer;user-select:none;"
+         onclick="toggleSection('bclInsightBody','bclInsightArrow')">
+      <span style="font-size:14px;">💡</span>
+      <span style="font-size:13px;font-weight:700;color:#5a9fd4;" data-i18n="bclInsightTitle">DBと売上の関係性インサイト</span>
+      <span id="bclInsightArrow" style="margin-left:auto;font-size:13px;color:#5a9fd4;">▸</span>
+    </div>
+    <div id="bclInsightBody" style="display:none;padding:0 16px 12px;">
+      <div id="bclInsight" style="font-size:12px;color:var(--tp);line-height:1.7;"></div>
+    </div>
+  </div>
+
+  <!-- Charts row -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+
+    <!-- Monthly new BCL -->
+    <div class="chart-card">
+      <div class="chart-tb">
+        <div>
+          <div class="chart-title" data-i18n="bclMonthlyTitle">月次 新規BCL登録数</div>
+          <div class="chart-sub" data-i18n="bclMonthlySubtitle">有効会員（青）＋無効会員（ピンク）・2024/04〜</div>
+        </div>
+      </div>
+      <div style="position:relative;height:260px;"><canvas id="bclMonthlyChart"></canvas></div>
+    </div>
+
+    <!-- Cumulative BCL -->
+    <div class="chart-card">
+      <div class="chart-tb">
+        <div>
+          <div class="chart-title" data-i18n="bclCumTitle">累計BCL（有効会員）推移</div>
+          <div class="chart-sub" data-i18n="bclCumSubtitle">2024/01〜現在　DB資産の積み上がり</div>
+        </div>
+      </div>
+      <div style="position:relative;height:260px;"><canvas id="bclCumChart"></canvas></div>
+    </div>
+
+  </div>
+
+  <!-- Age distribution -->
+  <div class="chart-card" style="margin-bottom:12px;">
+    <div class="chart-tb">
+      <div>
+        <div class="chart-title" data-i18n="bclAgeTitle">月齢分布 × 月次（有効会員）</div>
+        <div class="chart-sub" data-i18n="bclAgeSubtitle">登録時月齢バケット別構成（BCL活化開始時点）— ※現在月齢とは異なります</div>
+      </div>
+      <div style="display:flex;gap:5px;align-items:center;">
+        <button class="cb active" id="bclAgeAbs" onclick="setBclAgeMode('abs')" data-i18n="actual">実数</button>
+        <button class="cb" id="bclAgePct" onclick="setBclAgeMode('pct')" data-i18n="ratio">比率</button>
+      </div>
+    </div>
+    <div style="position:relative;height:280px;"><canvas id="bclAgeChart"></canvas></div>
+  </div>
+
+  <!-- Age donut + table row -->
+  <div style="display:grid;grid-template-columns:320px 1fr;gap:12px;margin-bottom:12px;">
+
+    <div class="chart-card">
+      <div class="chart-title" style="margin-bottom:12px;" data-i18n="bclDonutTitle">月齢分布 全体構成比</div>
+      <div style="position:relative;height:220px;"><canvas id="bclDonutChart"></canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title" style="margin-bottom:12px;" data-i18n="bclTableTitle">月齢バケット × 月次 クロス集計</div>
+      <div style="overflow-x:auto;max-height:260px;overflow-y:auto;" id="bclAgeTable"></div>
+    </div>
+
+  </div>
+
+</div><!-- /paneBCL -->
+
+<!-- TAB: MEMBER RATIO -->
+<div id="paneMember" style="display:none;">
+
+  <!-- KPI row -->
+  <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:12px;" id="memberKpiGrid"></div>
+
+  <!-- Insight (collapsible) -->
+  <div class="analysis" id="memberInsightWrap" style="margin-bottom:12px;">
+    <div class="ana-hdr" onclick="toggleSection('memberInsightBody','memberInsightArrow')" style="cursor:pointer;user-select:none;">
+      <span style="font-size:16px;">💡</span>
+      <span class="ana-title" data-i18n="memberInsightTitle">分析インサイト — 新旧会員比率</span>
+      <span id="memberInsightArrow" style="margin-left:auto;font-size:13px;color:var(--m1d);">▸</span>
+    </div>
+    <div id="memberInsightBody" style="display:none;margin-top:8px;" class="ana-section">
+      <ul class="ana-bullets" id="memberInsightList"></ul>
+    </div>
+  </div>
+
+  <!-- Main chart: stacked 100% bar -->
+  <div class="chart-card" style="margin-bottom:12px;">
+    <div class="chart-tb">
+      <div>
+        <div class="chart-title" data-i18n="memberChartTitle">學習商品 購入者属性 — 新会員 vs 旧講座会員</div>
+        <div class="chart-sub" data-i18n="memberChartSub">月次比率（%）・月講座終了前後の構造変化</div>
+      </div>
+    </div>
+    <div style="position:relative;height:320px;"><canvas id="memberChart"></canvas></div>
+    <!-- Crossover annotation -->
+    <div id="memberCrossover" style="margin-top:8px;font-size:11px;color:var(--ts);padding:0 4px;"></div>
+  </div>
+
+  <!-- Trend line chart -->
+  <div class="chart-card" style="margin-bottom:12px;">
+    <div class="chart-tb">
+      <div>
+        <div class="chart-title" data-i18n="memberTrendTitle">新会員比率 推移ライン</div>
+        <div class="chart-sub" data-i18n="memberTrendSub">50%ラインを境に「新会員主導」へ転換</div>
+      </div>
+    </div>
+    <div style="position:relative;height:240px;"><canvas id="memberTrendChart"></canvas></div>
+  </div>
+
+</div><!-- /paneMember -->
+
+
+<style>
+.tab-btn{
+  border:none;background:none;font-family:inherit;font-size:13px;font-weight:600;
+  padding:10px 22px;cursor:pointer;color:var(--ts);border-bottom:3px solid transparent;
+  margin-bottom:-2px;transition:all .15s;
+}
+.tab-btn:hover{color:var(--tp);}
+.tab-btn.active{color:var(--m1d);border-bottom-color:var(--m1d);}
+</style>
+
+</body>
+</html>
