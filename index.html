@@ -149,6 +149,7 @@ tr:not(.rt):not(.ryoy):hover td{background:#fdf5f7;}
   <button class="tab-btn active" id="tabSales" onclick="switchTab('sales')" data-i18n="tabSales">📊 売上分析</button>
   <button class="tab-btn" id="tabBCL" onclick="switchTab('bcl')" data-i18n="tabBCL">👥 BCL DB</button>
   <button class="tab-btn" id="tabMember" onclick="switchTab('member')" data-i18n="tabMember">🔄 新旧会員比率</button>
+  <button class="tab-btn" id="tabYoY" onclick="switchTab('yoy')" data-i18n="tabYoY">📈 経年比較</button>
 </div>
 
 <!-- TAB: SALES -->
@@ -313,7 +314,8 @@ const ALL_I18N = {
   bclAgeTitle:       {ja:'月齢分布 × 月次（有効会員）', zh:'月齡分佈 × 月次（有效會員）'},
   bclAgeSubtitle:    {ja:'登録時月齢バケット別構成（BCL活化開始時点）', zh:'登錄時月齡分佈（BCL活化開始時點）'},
   bclDonutTitle:     {ja:'月齢分布 全体構成比（現在月齢）', zh:'月齡分佈 整體佔比（現齡）'},
-  bclTableTitle:     {ja:'月齢バケット × 月次 クロス集計', zh:'月齡區間 × 月次 交叉統計'},
+  bclTableTitle2:   {ja:'月齢ランク × 月次 クロス集計（登録時月齢）', zh:'月齡區間 × 月次 交叉統計（登錄時月齡）'},
+    bclTableTitle:     {ja:'月齢バケット × 月次 クロス集計', zh:'月齡區間 × 月次 交叉統計'},
   bclInsightTitle:   {ja:'DBと売上の関係性インサイト', zh:'DB與銷售的關聯性洞察'},
   memberInsightTitle:{ja:'分析インサイト — 新旧会員比率', zh:'分析洞察 — 新舊會員比例'},
   memberChartTitle:  {ja:'學習商品 購入者属性 — 新会員 vs 旧講座会員', zh:'學習商品 購買者屬性 — 新會員 vs 舊講座會員'},
@@ -1176,16 +1178,19 @@ let currentTab = 'sales';
 
 function switchTab(tab){
   currentTab = tab;
-  document.getElementById('paneSales').style.display  = tab==='sales'  ? '' : 'none';
-  document.getElementById('paneBCL').style.display    = tab==='bcl'    ? '' : 'none';
-  document.getElementById('paneMember').style.display = tab==='member' ? '' : 'none';
-  ['tabSales','tabBCL','tabMember'].forEach(id=>{
+  const paneMap = {sales:'paneSales', bcl:'paneBCL', member:'paneMember', yoy:'paneYoY'};
+  const tabMap  = {sales:'tabSales',  bcl:'tabBCL',  member:'tabMember',  yoy:'tabYoY'};
+  Object.entries(paneMap).forEach(([k,id])=>{
     const el = document.getElementById(id);
-    if(el) el.classList.toggle('active',
-      id === 'tab' + tab.charAt(0).toUpperCase() + tab.slice(1));
+    if(el) el.style.display = k===tab ? '' : 'none';
+  });
+  Object.entries(tabMap).forEach(([k,id])=>{
+    const el = document.getElementById(id);
+    if(el) el.classList.toggle('active', k===tab);
   });
   if(tab==='bcl')    renderBCL();
   if(tab==='member') renderMemberTab();
+  if(tab==='yoy')    renderYoYTab();
 }
 
 // ── Universal section toggle ────────────────
@@ -1261,49 +1266,63 @@ const BCL = {
 };
 
 // ── Rank-based bucket definitions ─────────
-const BCL_RANK_ORDER = ['未生（妊娠中）','SS: 7~12M','S: 0~6M','S: 13~24M','AA: 25~36M','A: 37~60M','B: 61M+'];
+// Correct age order: 妊娠期 → 0~6 → 7~12 → 13~24 → AA → A → B
+const BCL_RANK_ORDER = ['未生（妊娠中）','S: 0~6M','SS: 7~12M','S: 13~24M','AA: 25~36M','A: 37~60M','B: 61M+'];
 
 const BCL_RANK_LABEL_JA = {
-  '未生（妊娠中）':'A 孕期',
-  'SS: 7~12M':  'SS 7〜12M',
-  'S: 0~6M':    'S  0〜6M',
-  'S: 13~24M':  'S  13〜24M',
-  'AA: 25~36M': 'AA 25〜36M',
-  'A: 37~60M':  'A  37〜60M',
-  'B: 61M+':    'B  61M+'
+  '未生（妊娠中）': 'A  孕期',
+  'S: 0~6M':       'S  0〜6M',
+  'SS: 7~12M':     'SS 7〜12M',
+  'S: 13~24M':     'S  13〜24M',
+  'AA: 25~36M':    'AA 25〜36M',
+  'A: 37~60M':     'A  37〜60M',
+  'B: 61M+':       'B  61M+',
 };
-const BCL_RANK_LABEL_ZH = {
-  '未生（妊娠中）':'A 孕期',
-  'SS: 7~12M':  'SS 7〜12M',
-  'S: 0~6M':    'S  0〜6M',
-  'S: 13~24M':  'S  13〜24M',
-  'AA: 25~36M': 'AA 25〜36M',
-  'A: 37~60M':  'A  37〜60M',
-  'B: 61M+':    'B  61M+'
-};
+const BCL_RANK_LABEL_ZH = BCL_RANK_LABEL_JA;
 
-const BCL_RANK_COLORS  = ['#f4d4b8','#f4b8c1','#b8d8f4','#b8cef8','#b8f4ce','#f4e4b8','#e0dcd8'];
-const BCL_RANK_COLORSD = ['#c87040','#c8707e','#5a9fd4','#4a80c8','#3eb86a','#c89830','#9a9490'];
+const BCL_RANK_COLORS  = ['#f4d4b8','#b8d8f4','#f4b8c1','#b8cef8','#b8f4ce','#f4e4b8','#e0dcd8'];
+const BCL_RANK_COLORSD = ['#c87040','#5a9fd4','#c8707e','#4a80c8','#3eb86a','#c89830','#9a9490'];
 
 const BCL_RANK_BADGE = {
   '未生（妊娠中）': {bg:'#f4d4b8',border:'#c87040',text:'#502000',label:'A'},
-  'SS: 7~12M':   {bg:'#f4b8c1',border:'#c8707e',text:'#7a1020',label:'SS'},
-  'S: 0~6M':     {bg:'#b8d8f4',border:'#5a9fd4',text:'#1a3060',label:'S'},
-  'S: 13~24M':   {bg:'#b8cef8',border:'#4a80c8',text:'#1a2060',label:'S'},
-  'AA: 25~36M':  {bg:'#b8f4ce',border:'#3eb86a',text:'#0a4020',label:'AA'},
-  'A: 37~60M':   {bg:'#f4e4b8',border:'#c89830',text:'#503000',label:'A'},
-  'B: 61M+':     {bg:'#e0dcd8',border:'#9a9490',text:'#504840',label:'B'},
+  'S: 0~6M':       {bg:'#b8d8f4',border:'#5a9fd4',text:'#1a3060',label:'S'},
+  'SS: 7~12M':     {bg:'#f4b8c1',border:'#c8707e',text:'#7a1020',label:'SS'},
+  'S: 13~24M':     {bg:'#b8cef8',border:'#4a80c8',text:'#1a2060',label:'S'},
+  'AA: 25~36M':    {bg:'#b8f4ce',border:'#3eb86a',text:'#0a4020',label:'AA'},
+  'A: 37~60M':     {bg:'#f4e4b8',border:'#c89830',text:'#503000',label:'A'},
+  'B: 61M+':       {bg:'#e0dcd8',border:'#9a9490',text:'#504840',label:'B'},
 };
 
-// Aliases
 const BCL_AGE_BUCKETS  = BCL_RANK_ORDER;
 const BCL_AGE_COLORS   = BCL_RANK_COLORS;
 const BCL_AGE_COLORSD  = BCL_RANK_COLORSD;
 const AGE_LABEL_JA = BCL_RANK_LABEL_JA;
 const AGE_LABEL_ZH = BCL_RANK_LABEL_ZH;
 
+// ── Taiwan birth population data (内政部確定値) ───────────────
+// Used for population share calculation (current age = 2026/04)
+const TW_BIRTH_POP = {
+  2020: 165249,  // 現在月齢 61~72M → A
+  2021: 153820,  // 現在月齢 49~60M → A
+  2022: 138986,  // 現在月齢 37~48M → A
+  2023: 135571,  // 現在月齢 25~36M → AA
+  2024: 134856,  // 現在月齢 13~24M → S
+  2025: 107812,  // 現在月齢  0~12M → S/SS
+};
 
-let bclMonthlyChartObj=null, bclCumChartObj=null, bclAgeChartObj=null, bclDonutChartObj=null;
+// ── Sub-tab control ─────────────────────────
+let bclSubTab = 'status';
+function switchBclSub(sub){
+  bclSubTab = sub;
+  document.getElementById('subPaneBclStatus').style.display = sub==='status' ? '' : 'none';
+  document.getElementById('subPaneBclAcq').style.display    = sub==='acq'    ? '' : 'none';
+  document.getElementById('subBclStatus').classList.toggle('active', sub==='status');
+  document.getElementById('subBclAcq').classList.toggle('active',    sub==='acq');
+  if(sub==='acq') { renderBclMonthlyChart(); renderBclAgeChart(); renderBclAgeTable(); }
+  if(sub==='status') { renderBclPopGrid(); renderBclKPI(); renderBclDonut(); renderBclRankTable(); renderBclInsight(); }
+}
+
+let bclMonthlyChartObj=null, bclAgeChartObj=null, bclDonutChartObj=null;
 let bclAgeMode='abs';
 function setBclAgeMode(m){
   bclAgeMode=m;
@@ -1312,65 +1331,130 @@ function setBclAgeMode(m){
   renderBclAgeChart();
 }
 
-// ── BCL KPI ────────────────────────────────
+// ── Population share grid ────────────────────
+function renderBclPopGrid(){
+  const isJa = lang==='ja';
+  const totalAge = Object.values(BCL.age_total).reduce((s,v)=>s+v,0);
+
+  // Map birth year to current age rank and BCL count
+  // BCL age_total uses current-age buckets
+  // birth year 2025 → age 0~12M (split SS 7~12 and S 0~6)
+  // birth year 2024 → age 13~24M → S:13~24M
+  // birth year 2023 → age 25~36M → AA:25~36M
+  // birth year 2022 → age 37~48M ⊂ A:37~60M
+  // birth year 2021 → age 49~60M ⊂ A:37~60M
+  // birth year 2020 → age 61~72M ⊂ B:61M+
+
+  const yearData = [
+    { year:2025, pop:TW_BIRTH_POP[2025], ageRange:'0〜12M',
+      bclCount: BCL.age_total['S: 0~6M'] + BCL.age_total['SS: 7~12M'],
+      badge: BCL_RANK_BADGE['SS: 7~12M'], rankLabel:'S/SS' },
+    { year:2024, pop:TW_BIRTH_POP[2024], ageRange:'13〜24M',
+      bclCount: BCL.age_total['S: 13~24M'],
+      badge: BCL_RANK_BADGE['S: 13~24M'], rankLabel:'S' },
+    { year:2023, pop:TW_BIRTH_POP[2023], ageRange:'25〜36M',
+      bclCount: BCL.age_total['AA: 25~36M'],
+      badge: BCL_RANK_BADGE['AA: 25~36M'], rankLabel:'AA' },
+    { year:2022, pop:TW_BIRTH_POP[2022], ageRange:'37〜48M',
+      bclCount: Math.round(BCL.age_total['A: 37~60M'] * 0.55), // approx half of A:37~60
+      badge: BCL_RANK_BADGE['A: 37~60M'], rankLabel:'A', approx:true },
+    { year:2021, pop:TW_BIRTH_POP[2021], ageRange:'49〜60M',
+      bclCount: Math.round(BCL.age_total['A: 37~60M'] * 0.45),
+      badge: BCL_RANK_BADGE['A: 37~60M'], rankLabel:'A', approx:true },
+    { year:2020, pop:TW_BIRTH_POP[2020], ageRange:'61M+',
+      bclCount: BCL.age_total['B: 61M+'],
+      badge: BCL_RANK_BADGE['B: 61M+'], rankLabel:'B' },
+  ];
+
+  document.getElementById('bclPopGrid').innerHTML = yearData.map(d=>{
+    const share = (d.bclCount / d.pop * 100).toFixed(2);
+    const b = d.badge;
+    return `<div style="background:${b.bg};border:1.5px solid ${b.border};border-radius:var(--r);padding:10px 12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <span style="font-size:12px;font-weight:700;color:var(--tp);">${d.year}年生</span>
+        <span style="font-size:10px;font-weight:700;color:${b.border};background:${b.bg};border:1px solid ${b.border};padding:1px 6px;border-radius:8px;">${d.rankLabel}</span>
+      </div>
+      <div style="font-size:9px;color:var(--ts);margin-bottom:6px;">${d.ageRange}（現在月齢）</div>
+      <div style="font-size:18px;font-weight:700;color:var(--tp);line-height:1;">${share}<span style="font-size:11px;">%</span></div>
+      <div style="font-size:9px;color:${b.border};margin-top:2px;">シェア</div>
+      <div style="border-top:1px solid ${b.border}33;margin-top:6px;padding-top:5px;display:flex;justify-content:space-between;">
+        <div style="text-align:center;">
+          <div style="font-size:10px;font-weight:600;color:var(--tp);">${d.bclCount.toLocaleString()}${d.approx?'*':''}</div>
+          <div style="font-size:8px;color:var(--ts);">BCL</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:10px;font-weight:600;color:var(--ts);">${(d.pop/10000).toFixed(1)}万</div>
+          <div style="font-size:8px;color:var(--ts);">出生数</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── BCL KPI summary ──────────────────────────
 function renderBclKPI(){
   const isJa = lang==='ja';
   const b = BCL.kpi;
   const totalAge = Object.values(BCL.age_total).reduce((s,v)=>s+v,0);
-
   const ssNow  = BCL.age_total['SS: 7~12M'];
   const sNow   = BCL.age_total['S: 0~6M'] + BCL.age_total['S: 13~24M'];
   const aaNow  = BCL.age_total['AA: 25~36M'];
   const corePct = ((ssNow+sNow+aaNow)/totalAge*100).toFixed(0);
-
   const months = Object.keys(BCL.monthly).sort();
   const latestM = months[months.length-1];
   const latestValid = BCL.monthly[latestM].valid;
 
-  const summaryPanels = [
-    {label:isJa?'有効会員 累計':'有效會員 累計',    val:b.total_valid.toLocaleString(),  sub:'LINE UID', cls:'c2'},
-    {label:isJa?'無効会員（封鎖）':'無效會員（封鎖）',val:b.total_invalid.toLocaleString(),sub:'LINE UID', cls:'c1'},
-    {label:isJa?'DB総数':'DB總數',                  val:b.total_all.toLocaleString(),    sub:'LINE UID', cls:'c0'},
-    {label:isJa?'最新月 新規有効':'最新月 新規有效',  val:latestValid.toLocaleString(),    sub:latestM.slice(0,4)+'/'+latestM.slice(4,6), cls:'c4'},
-    {label:isJa?'最新累計':'最新累計',               val:b.latest_cum.toLocaleString(),   sub:isJa?'有効会員':'有效會員', cls:'c5'},
-    {label:isJa?'SS+S+AA（現在月齢）':'SS+S+AA（現齡）',val:(ssNow+sNow+aaNow).toLocaleString(),sub:corePct+'%', cls:'c3'},
+  const panels = [
+    {label:isJa?'有効会員 現在合計':'有效會員 現在合計', val:b.total_valid.toLocaleString(), sub:'LINE UID', cls:'c2'},
+    {label:isJa?'無効会員（封鎖）':'無效會員（封鎖）',   val:b.total_invalid.toLocaleString(), sub:'LINE UID', cls:'c1'},
+    {label:isJa?'DB総数':'DB總數',                       val:b.total_all.toLocaleString(), sub:'LINE UID', cls:'c0'},
+    {label:isJa?'最新月 新規有効':'最新月 新規有效',     val:latestValid.toLocaleString(), sub:latestM.slice(0,4)+'/'+latestM.slice(4,6), cls:'c4'},
+    {label:isJa?'SS+S+AA（現在月齢）':'SS+S+AA（現齡）',  val:(ssNow+sNow+aaNow).toLocaleString(), sub:corePct+'%', cls:'c3'},
   ];
-
-  const noteText = isJa ? '※ 現在月齢ベース（2026/04時点・生年月から算出）' : '※ 現齡基準（2026/04時點・依出生月計算）';
-  const rankPanels = BCL_RANK_ORDER.map(r=>{
-    const badge = BCL_RANK_BADGE[r];
-    const v     = BCL.age_total[r];
-    const pct   = (v/totalAge*100).toFixed(1);
-    return `<div style="background:${badge.bg};border:1.5px solid ${badge.border};border-radius:var(--r);padding:10px 12px;position:relative;overflow:hidden;">
-      <div style="position:absolute;top:6px;right:8px;font-size:11px;font-weight:800;color:${badge.border};opacity:.4;">${badge.label}</div>
-      <div style="font-size:9px;font-weight:700;color:${badge.border};letter-spacing:.4px;margin-bottom:4px;">${BCL_RANK_LABEL_JA[r]}</div>
-      <div style="font-size:17px;font-weight:700;color:var(--tp);line-height:1;">${v.toLocaleString()}</div>
-      <div style="font-size:10px;color:${badge.border};margin-top:3px;font-weight:600;">${pct}%</div>
-    </div>`;
-  });
-
   document.getElementById('bclKpiGrid').innerHTML =
-    `<div style="grid-column:1/-1;display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:8px;">
-      ${summaryPanels.map(p=>`
+    `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px;">
+      ${panels.map(p=>`
         <div class="kpi ${p.cls}">
           <div class="kpi-lbl">${p.label}</div>
           <div class="kpi-val" style="font-size:15px;">${p.val}</div>
           <div class="kpi-sub">${p.sub}</div>
         </div>`).join('')}
-    </div>
-    <div style="grid-column:1/-1;">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-        <div style="font-size:10px;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:.5px;">${isJa?'月齢ランク別 会員数（DB全体）':'月齡等級別 會員數（DB全體）'}</div>
-        <div style="font-size:10px;color:var(--m1d);font-weight:600;">${noteText}</div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;">
-        ${rankPanels.join('')}
-      </div>
     </div>`;
 }
 
+// ── Rank table (DB現況) ──────────────────────
+function renderBclRankTable(){
+  const isJa = lang==='ja';
+  const total = Object.values(BCL.age_total).reduce((s,v)=>s+v,0);
+  let html = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+    <thead><tr>
+      <th style="text-align:left;padding:7px 10px;background:var(--bg);border-bottom:1.5px solid var(--bdr);color:var(--ts);">ランク</th>
+      <th style="text-align:left;padding:7px 10px;background:var(--bg);border-bottom:1.5px solid var(--bdr);color:var(--ts);">月齢</th>
+      <th style="text-align:right;padding:7px 10px;background:var(--bg);border-bottom:1.5px solid var(--bdr);color:var(--ts);">件数</th>
+      <th style="text-align:right;padding:7px 10px;background:var(--bg);border-bottom:1.5px solid var(--bdr);color:var(--ts);">構成比</th>
+    </tr></thead><tbody>`;
+  BCL_RANK_ORDER.forEach(r=>{
+    const b = BCL_RANK_BADGE[r];
+    const v = BCL.age_total[r];
+    const pct = (v/total*100).toFixed(1);
+    html += `<tr onmouseover="this.style.background='#fdf5f7'" onmouseout="this.style.background=''">
+      <td style="padding:6px 10px;border-bottom:1px solid var(--bdr);">
+        <span style="background:${b.bg};border:1.5px solid ${b.border};color:${b.border};font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;">${b.label}</span>
+      </td>
+      <td style="padding:6px 10px;border-bottom:1px solid var(--bdr);color:var(--ts);font-size:11px;">${BCL_RANK_LABEL_JA[r]}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid var(--bdr);text-align:right;font-weight:600;">${v.toLocaleString()}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid var(--bdr);text-align:right;color:${b.border};font-weight:700;">${pct}%</td>
+    </tr>`;
+  });
+  html += `<tr style="background:#fdf8f5;font-weight:700;border-top:1.5px solid var(--bdr);">
+    <td colspan="2" style="padding:6px 10px;">合計</td>
+    <td style="padding:6px 10px;text-align:right;">${total.toLocaleString()}</td>
+    <td style="padding:6px 10px;text-align:right;">100.0%</td>
+  </tr></tbody></table>`;
+  document.getElementById('bclRankTable').innerHTML = html;
+}
 
-// ── BCL Insight Banner ─────────────────────
+// ── BCL Insight ──────────────────────────────
 function renderBclInsight(){
   const isJa = lang==='ja';
   const total = Object.values(BCL.age_total).reduce((s,v)=>s+v,0);
@@ -1378,44 +1462,56 @@ function renderBclInsight(){
   const s06 = BCL.age_total['S: 0~6M'];
   const s24 = BCL.age_total['S: 13~24M'];
   const aa  = BCL.age_total['AA: 25~36M'];
-  const a   = BCL.age_total['A: 37~60M'];
-  const preg= BCL.age_total['未生（妊娠中）'];
   const b   = BCL.age_total['B: 61M+'];
+  const preg= BCL.age_total['未生（妊娠中）'];
   const ssPct  = (ss /total*100).toFixed(1);
   const sPct   = ((s06+s24)/total*100).toFixed(1);
   const aaPct  = (aa /total*100).toFixed(1);
   const bPct   = (b  /total*100).toFixed(1);
-  const corePct= ((ss+s06+s24+aa)/total*100).toFixed(0);
-
   if(isJa){
-    document.getElementById('bclInsight').innerHTML = `
-      <strong>💡 DB月齢ランク分析（現在月齢・2026/04時点）と売上の関係性</strong><br>
-      <span style="color:#9a9490;font-weight:600;">⚠️ 注意：KPI・ドーナツは現在月齢（生年月日→今日算出）。月次グラフは登録時月齢（BCL活化開始時点）。</span><br><br>
-      現在月齢で見ると、<strong style="color:#9a9490;">B（61M+）が${b.toLocaleString()}件・${bPct}%と過半数</strong>を占めDBの高齢化が進んでいます。
-      <strong style="color:#c8707e;">SS（7〜12M）はわずか${ss.toLocaleString()}件（${ssPct}%）</strong>、S+SS合計でも${(ss+s06+s24).toLocaleString()}件（${(+(ssPct)+ +(sPct)).toFixed(1)}%）に留まります。<br>
-      ただし直近（25/12〜26/03）は妊娠期の新規登録が急増（月${preg.toLocaleString()}件ペース）しており、
-      <strong>6〜12か月後にSS層として転換するパイプライン</strong>が形成されつつある点は前向きな兆候です。<br>
-      BCLからLINEでSS・S月齢のタイミングに正確にアプローチするほど購買転換率が上がる構造です。
-      DBの厚みを維持しながら月齢精度の高い配信が売上向上の核心といえます。`;
+    document.getElementById('bclInsight').innerHTML =
+      `<strong>💡 現在月齢ベース（生年月日→2026/04算出）での分布</strong><br>
+      <span style="color:#9a9490;font-size:11px;">⚠️ 封鎖・退会の履歴がないため、現在の有効数推移は表現できません。「DB現況」は現時点スナップショットです。</span><br><br>
+      <strong style="color:#9a9490;">B（61M+）が${b.toLocaleString()}件・${bPct}%と過半数</strong>を占めDBの高齢化が進んでいます。
+      <strong style="color:#c8707e;">SS（7〜12M）は${ss.toLocaleString()}件（${ssPct}%）</strong>、S+SS合計${(ss+s06+s24).toLocaleString()}件（${(+(ssPct)+ +(sPct)).toFixed(1)}%）に留まります。<br>
+      ただし直近（25/12〜26/03）の妊娠期新規登録が急増しており、<strong>6〜12か月後のSS転換パイプライン</strong>が形成されつつあります。`;
   } else {
-    document.getElementById('bclInsight').innerHTML = `
-      <strong>💡 DB月齡等級分析（現齡・2026/04時點）與銷售關聯</strong><br>
-      <span style="color:#9a9490;font-weight:600;">⚠️ 注意：KPI・圓餅圖為現齡（依出生月計算）。月次圖表為登錄時月齡（BCL活化當時）。</span><br><br>
-      以現齡來看，<strong style="color:#9a9490;">B（61M+）佔${b.toLocaleString()}件・${bPct}%，DB高齡化明顯。</strong>
-      <strong style="color:#c8707e;">SS（7〜12M）僅${ss.toLocaleString()}件（${ssPct}%）</strong>，SS+S合計也只有${(ss+s06+s24).toLocaleString()}件（${(+(ssPct)+ +(sPct)).toFixed(1)}%）。<br>
-      但近期（25/12〜26/03）妊娠期新規登錄急增，<strong>6〜12個月後將轉換為SS層的管道</strong>正在形成，為正面信號。<br>
-      透過BCL對SS・S月齡精準推播，是提升購買轉換率的關鍵。維持DB厚度並提高月齡精度，是銷售成長的核心。`;
+    document.getElementById('bclInsight').innerHTML =
+      `<strong>💡 現齡基準（2026/04時點）分佈</strong><br>
+      <span style="color:#9a9490;font-size:11px;">⚠️ 因無封鎖退出歷程，無法表現有效數推移。「DB現況」為當下快照。</span><br><br>
+      <strong style="color:#9a9490;">B（61M+）佔${b.toLocaleString()}件・${bPct}%，DB高齡化明顯。</strong>
+      <strong style="color:#c8707e;">SS（7〜12M）僅${ss.toLocaleString()}件（${ssPct}%）</strong>，SS+S合計${(ss+s06+s24).toLocaleString()}件（${(+(ssPct)+ +(sPct)).toFixed(1)}%）。<br>
+      近期（25/12〜26/03）妊娠期新登錄急增，<strong>6〜12個月後轉換為SS的管道</strong>正在形成。`;
   }
 }
 
+// ── Donut chart ──────────────────────────────
+function renderBclDonut(){
+  const total = Object.values(BCL.age_total).reduce((s,v)=>s+v,0);
+  const labels = BCL_RANK_ORDER.map(r=>BCL_RANK_LABEL_JA[r]);
+  const vals   = BCL_RANK_ORDER.map(r=>BCL.age_total[r]);
+  if(bclDonutChartObj) bclDonutChartObj.destroy();
+  bclDonutChartObj = new Chart(document.getElementById('bclDonutChart').getContext('2d'),{
+    type:'doughnut',
+    data:{ labels, datasets:[{data:vals,
+      backgroundColor:BCL_RANK_COLORS.map(c=>c+'cc'),
+      borderColor:BCL_RANK_COLORSD, borderWidth:1.5}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'55%',
+      plugins:{
+        legend:{position:'right',labels:{font:{size:10},boxWidth:11,padding:8}},
+        tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed.toLocaleString()} (${(ctx.parsed/total*100).toFixed(1)}%)`}},
+        datalabels:{display:false}
+      }
+    }
+  });
+}
 
-// ── Monthly BCL Chart ──────────────────────
+// ── Monthly BCL chart (獲得分析) ─────────────
 function renderBclMonthlyChart(){
   const months = Object.keys(BCL.monthly).sort();
   const labels = months.map(m=>m.slice(2,4)+'/'+m.slice(4,6));
   const validVals   = months.map(m=>BCL.monthly[m].valid);
   const invalidVals = months.map(m=>BCL.monthly[m].invalid);
-
   if(bclMonthlyChartObj) bclMonthlyChartObj.destroy();
   bclMonthlyChartObj = new Chart(document.getElementById('bclMonthlyChart').getContext('2d'),{
     type:'bar',
@@ -1428,8 +1524,7 @@ function renderBclMonthlyChart(){
         backgroundColor:'#f4b8c1cc', borderColor:'#c8707e', borderWidth:1.5, borderRadius:3,
         datalabels:{display:false}},
     ]},
-    options:{
-      responsive:true,maintainAspectRatio:false,
+    options:{responsive:true,maintainAspectRatio:false,
       interaction:{mode:'index',intersect:false},
       plugins:{
         legend:{position:'top',labels:{font:{size:10},boxWidth:10}},
@@ -1444,68 +1539,20 @@ function renderBclMonthlyChart(){
   });
 }
 
-// ── Cumulative BCL Chart ───────────────────
-function renderBclCumChart(){
-  const months = Object.keys(BCL.cum).sort();
-  const labels = months.map(m=>m.slice(2,4)+'/'+m.slice(4,6));
-  const vals   = months.map(m=>BCL.cum[m]);
-  const maxV   = Math.max(...vals);
-
-  if(bclCumChartObj) bclCumChartObj.destroy();
-  bclCumChartObj = new Chart(document.getElementById('bclCumChart').getContext('2d'),{
-    type:'line',
-    data:{ labels, datasets:[{
-      label: lang==='ja'?'累計有効会員数':'累計有效會員數',
-      data: vals,
-      borderColor:'#5a9fd4', backgroundColor:'#b8d8f440',
-      borderWidth:2.5, pointRadius:2, pointHoverRadius:5, tension:0.3, fill:true,
-      datalabels:{
-        display:ctx=>{
-          const i=ctx.dataIndex, d=ctx.dataset.data;
-          // show only at milestones: first, last, local peaks
-          if(i===0||i===d.length-1) return true;
-          // show at 110k, 120k, 130k, 140k crossings
-          const milestones=[110000,120000,130000,140000];
-          return milestones.some(ms=>d[i]>=ms&&d[i-1]<ms);
-        },
-        anchor:'top',align:'top',
-        formatter:v=>(v/10000).toFixed(1)+'万',
-        font:{size:9,weight:'700'},color:'#5a9fd4',offset:2
-      }
-    }]},
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{
-        legend:{display:false},
-        tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}`}}
-      },
-      scales:{
-        x:{ticks:{font:{size:9},maxRotation:45},grid:{color:'#f0ebe5'}},
-        y:{ticks:{font:{size:10},callback:v=>(v/10000).toFixed(0)+'万'},grid:{color:'#f0ebe5'},
-           suggestedMin:100000,suggestedMax:maxV*1.05}
-      }
-    },
-    plugins:[ChartDataLabels]
-  });
-}
-
-// ── Age × Month Chart ──────────────────────
+// ── Age × month chart (登録時月齢) ───────────
 function renderBclAgeChart(){
   const months = Object.keys(BCL.age_by_month).sort();
   const labels = months.map(m=>m.slice(2,4)+'/'+m.slice(4,6));
   const isPct  = bclAgeMode==='pct';
-
-  // totals per month for % calc
-  const monthTotals = months.map(m=>BCL_AGE_BUCKETS.reduce((s,b)=>s+(BCL.age_by_month[m][b]||0),0));
-
-  const datasets = BCL_AGE_BUCKETS.map((b,i)=>({
-    label: lang==='ja'?AGE_LABEL_JA[b]:AGE_LABEL_ZH[b],
+  const monthTotals = months.map(m=>BCL_RANK_ORDER.reduce((s,b)=>s+(BCL.age_by_month[m][b]||0),0));
+  const datasets = BCL_RANK_ORDER.map((r,i)=>({
+    label: BCL_RANK_LABEL_JA[r],
     data: months.map((m,mi)=>{
-      const v = BCL.age_by_month[m][b]||0;
+      const v = BCL.age_by_month[m][r]||0;
       return isPct ? (monthTotals[mi]>0 ? +(v/monthTotals[mi]*100).toFixed(1) : 0) : v;
     }),
-    backgroundColor: BCL_AGE_COLORS[i]+'cc',
-    borderColor: BCL_AGE_COLORSD[i],
+    backgroundColor: BCL_RANK_COLORS[i]+'cc',
+    borderColor: BCL_RANK_COLORSD[i],
     borderWidth:1, borderRadius:0,
     datalabels:{
       display:ctx=>{const v=ctx.dataset.data[ctx.dataIndex]; return isPct?v>=8:v>=100;},
@@ -1514,13 +1561,10 @@ function renderBclAgeChart(){
       font:{size:8,weight:'700'},color:'#333'
     }
   }));
-
   if(bclAgeChartObj) bclAgeChartObj.destroy();
   bclAgeChartObj = new Chart(document.getElementById('bclAgeChart').getContext('2d'),{
-    type:'bar',
-    data:{ labels, datasets },
-    options:{
-      responsive:true,maintainAspectRatio:false,
+    type:'bar', data:{labels,datasets},
+    options:{responsive:true,maintainAspectRatio:false,
       interaction:{mode:'index',intersect:false},
       plugins:{
         legend:{position:'top',labels:{font:{size:10},boxWidth:10,padding:10}},
@@ -1536,74 +1580,41 @@ function renderBclAgeChart(){
   });
 }
 
-// ── Age Donut ──────────────────────────────
-function renderBclDonut(){
-  const total = Object.values(BCL.age_total).reduce((s,v)=>s+v,0);
-  const labels= BCL_AGE_BUCKETS.map(b=>lang==='ja'?AGE_LABEL_JA[b]:AGE_LABEL_ZH[b]);
-  const vals  = BCL_AGE_BUCKETS.map(b=>BCL.age_total[b]);
-
-  if(bclDonutChartObj) bclDonutChartObj.destroy();
-  bclDonutChartObj = new Chart(document.getElementById('bclDonutChart').getContext('2d'),{
-    type:'doughnut',
-    data:{ labels, datasets:[{data:vals,
-      backgroundColor:BCL_AGE_COLORS.map(c=>c+'cc'),
-      borderColor:BCL_AGE_COLORSD, borderWidth:1.5}]},
-    options:{
-      responsive:true,maintainAspectRatio:false,cutout:'55%',
-      plugins:{
-        legend:{position:'right',labels:{font:{size:10},boxWidth:11,padding:8}},
-        tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed.toLocaleString()} (${(ctx.parsed/total*100).toFixed(1)}%)`}}
-      },
-      datalabels:{display:false}
-    }
-  });
-}
-
-// ── Age Table ──────────────────────────────
+// ── Age table ────────────────────────────────
 function renderBclAgeTable(){
   const isJa = lang==='ja';
   const months = Object.keys(BCL.age_by_month).sort();
-  const bkts   = BCL_AGE_BUCKETS;
+  const bkts = BCL_RANK_ORDER;
   let html=`<table style="width:100%;border-collapse:collapse;font-size:11px;">
     <thead><tr>
-      <th style="text-align:left;padding:5px 8px;border-bottom:1.5px solid var(--bdr);background:var(--bg);color:var(--ts);white-space:nowrap;">${isJa?'年月':'年月'}</th>
-      ${bkts.map((b,i)=>`<th style="text-align:right;padding:5px 8px;border-bottom:1.5px solid var(--bdr);background:var(--bg);color:${BCL_AGE_COLORSD[i]};font-weight:700;white-space:nowrap;">${isJa?AGE_LABEL_JA[b]:AGE_LABEL_ZH[b]}</th>`).join('')}
-      <th style="text-align:right;padding:5px 8px;border-bottom:1.5px solid var(--bdr);background:var(--bg);color:var(--ts);font-weight:700;">${isJa?'合計':'合計'}</th>
+      <th style="text-align:left;padding:5px 8px;border-bottom:1.5px solid var(--bdr);background:var(--bg);color:var(--ts);white-space:nowrap;">年月</th>
+      ${bkts.map((b,i)=>`<th style="text-align:right;padding:5px 8px;border-bottom:1.5px solid var(--bdr);background:var(--bg);color:${BCL_RANK_COLORSD[i]};font-weight:700;white-space:nowrap;">${BCL_RANK_LABEL_JA[b]}</th>`).join('')}
+      <th style="text-align:right;padding:5px 8px;border-bottom:1.5px solid var(--bdr);background:var(--bg);color:var(--ts);font-weight:700;">合計</th>
     </tr></thead><tbody>`;
-
   months.forEach(m=>{
     const row = BCL.age_by_month[m];
     const total = bkts.reduce((s,b)=>s+(row[b]||0),0);
-    const label = m.slice(0,4)+'/'+m.slice(4,6);
     html += `<tr onmouseover="this.style.background='#fdf5f7'" onmouseout="this.style.background=''">
-      <td style="padding:5px 8px;border-bottom:1px solid var(--bdr);font-weight:600;">${label}</td>
+      <td style="padding:5px 8px;border-bottom:1px solid var(--bdr);font-weight:600;">${m.slice(0,4)+'/'+m.slice(4,6)}</td>
       ${bkts.map(b=>`<td style="padding:5px 8px;border-bottom:1px solid var(--bdr);text-align:right;font-variant-numeric:tabular-nums;">${(row[b]||0).toLocaleString()}</td>`).join('')}
       <td style="padding:5px 8px;border-bottom:1px solid var(--bdr);text-align:right;font-weight:700;">${total.toLocaleString()}</td>
     </tr>`;
   });
-
-  // Totals row
   const totals = bkts.map(b=>BCL.age_total[b]);
-  const grandTotal = totals.reduce((s,v)=>s+v,0);
+  const grand = totals.reduce((s,v)=>s+v,0);
   html+=`<tr style="background:#fdf8f5;font-weight:700;">
-    <td style="padding:5px 8px;border-top:1.5px solid var(--bdr);">${isJa?'合計':'合計'}</td>
+    <td style="padding:5px 8px;border-top:1.5px solid var(--bdr);">合計</td>
     ${totals.map(v=>`<td style="padding:5px 8px;border-top:1.5px solid var(--bdr);text-align:right;">${v.toLocaleString()}</td>`).join('')}
-    <td style="padding:5px 8px;border-top:1.5px solid var(--bdr);text-align:right;">${grandTotal.toLocaleString()}</td>
-  </tr>`;
-  html+=`</tbody></table>`;
+    <td style="padding:5px 8px;border-top:1.5px solid var(--bdr);text-align:right;">${grand.toLocaleString()}</td>
+  </tr></tbody></table>`;
   document.getElementById('bclAgeTable').innerHTML = html;
 }
 
-// ── Main BCL render ────────────────────────
+// ── Main BCL render ──────────────────────────
 function renderBCL(){
-  renderBclKPI();
-  renderBclInsight();
-  renderBclMonthlyChart();
-  renderBclCumChart();
-  renderBclAgeChart();
-  renderBclDonut();
-  renderBclAgeTable();
+  switchBclSub('status');
 }
+
 
 
 
@@ -1771,14 +1782,447 @@ function renderMemberTrend(){
 }
 
 
-function setLang(l){
-  lang = l;
-  applyI18n();
-  renderTagsUI();
-  if(currentTab==='bcl')         renderBCL();
-  else if(currentTab==='member') renderMemberTab();
-  else                           renderAllFull();
+
+// ══════════════════════════════════════════════
+// YoY COMPARISON TAB
+// ══════════════════════════════════════════════
+
+// ── State ─────────────────────────────────────
+let yoyAxis = 'month';
+let yoyPeriod = 'fy2425';
+let yoySeries = [{prod:'__ALL__', ch:'__ALL__', id:'y1', colorIdx:0}];
+let yoySeriesIdCounter = 1;
+let yoyBarChartObj = null, yoyLineChartObj = null;
+
+// ── Period definitions ─────────────────────────
+const YOY_PERIODS = {
+  fy2425: {
+    A: { label:'FY24', months: m => m>='202404' && m<='202503' },
+    B: { label:'FY25', months: m => m>='202504' && m<='202603' },
+  },
+  h1: {
+    A: { label:'FY24前半（4〜9月）', months: m => m>='202404' && m<='202409' },
+    B: { label:'FY25前半（4〜9月）', months: m => m>='202504' && m<='202509' },
+  },
+  h2: {
+    A: { label:'FY24後半（10〜3月）', months: m => m>='202410' && m<='202503' },
+    B: { label:'FY25後半（10〜3月）', months: m => m>='202510' && m<='202603' },
+  },
+};
+
+// ── Axis key helper ────────────────────────────
+function getYoyAxisKey(r, axis){
+  if(axis==='month')   return r['月表示'];
+  if(axis==='quarter') return r['FY四半期'];
+  return r['年度'];
 }
+
+// ── Get axis labels for a period side ─────────
+function getYoyLabels(periodSide, axis){
+  const keys = new Set();
+  RAW.forEach(r => {
+    if(periodSide.months(r['月'])) keys.add(getYoyAxisKey(r, axis));
+  });
+  return [...keys].sort();
+}
+
+// ── Aggregate data ─────────────────────────────
+function yoyAgg(prod, ch, periodSide, axis){
+  const filtered = RAW.filter(r =>
+    periodSide.months(r['月']) &&
+    (prod==='__ALL__' || r['商品群']===prod) &&
+    (ch  ==='__ALL__' || r['管道']===ch)
+  );
+  const map = {};
+  filtered.forEach(r => {
+    const k = getYoyAxisKey(r, axis);
+    map[k] = (map[k]||0) + r['売上'];
+  });
+  return map;
+}
+
+// ── Controls ────────────────────────────────────
+function setYoyAxis(v){
+  yoyAxis = v;
+  document.querySelectorAll('#yoyAxisGroup .btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.val===v));
+  renderYoY();
+}
+function setYoyPeriod(v){
+  yoyPeriod = v;
+  document.querySelectorAll('#yoyPeriodGroup .btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.val===v));
+  renderYoY();
+}
+
+function addYoySeries(){
+  const prod = document.getElementById('yoySelProduct').value;
+  const ch   = document.getElementById('yoySelChannel').value;
+  if(yoySeries.find(s=>s.prod===prod&&s.ch===ch)) return;
+  yoySeries.push({prod,ch, id:`y${++yoySeriesIdCounter}`,
+                  colorIdx: yoySeries.length % SERIES_PALETTE.length});
+  renderYoyTags();
+  renderYoY();
+}
+function removeYoySeries(id){
+  yoySeries = yoySeries.filter(s=>s.id!==id);
+  yoySeries.forEach((s,i)=>s.colorIdx=i%SERIES_PALETTE.length);
+  renderYoyTags(); renderYoY();
+}
+function clearYoySeries(){
+  yoySeries = []; renderYoyTags(); renderYoY();
+}
+
+function yoySeriesLabel(s){
+  const p = s.prod==='__ALL__' ? (lang==='ja'?'全商品':'全商品') : s.prod;
+  const c = s.ch  ==='__ALL__' ? (lang==='ja'?'全管道':'全管道') : s.ch;
+  return `${p} × ${c}`;
+}
+
+function renderYoyTags(){
+  const wrap = document.getElementById('yoySeriesTags');
+  if(!yoySeries.length){
+    wrap.innerHTML = `<span style="font-size:11px;color:var(--tm);">${
+      lang==='ja'?'系列未設定 — 上で追加してください':'尚未設定系列'}</span>`;
+    return;
+  }
+  wrap.innerHTML = yoySeries.map(s=>{
+    const pal = SERIES_PALETTE[s.colorIdx];
+    return `<span class="s-tag" style="background:${pal.fill};border-color:${pal.stroke};color:${pal.text};">
+      ${yoySeriesLabel(s)}<span class="s-x" onclick="removeYoySeries('${s.id}')">×</span></span>`;
+  }).join('');
+}
+
+// ── KPI ────────────────────────────────────────
+function renderYoyKPI(){
+  const isJa = lang==='ja';
+  const pd = YOY_PERIODS[yoyPeriod];
+  const totA = RAW.filter(r=>pd.A.months(r['月'])).reduce((s,r)=>s+r['売上'],0);
+  const totB = RAW.filter(r=>pd.B.months(r['月'])).reduce((s,r)=>s+r['売上'],0);
+  const diff = totB - totA;
+  const yoy  = totA>0 ? ((totB-totA)/totA*100) : null;
+
+  // Count months in each period
+  const mA = [...new Set(RAW.filter(r=>pd.A.months(r['月'])).map(r=>r['月']))].length||1;
+  const mB = [...new Set(RAW.filter(r=>pd.B.months(r['月'])).map(r=>r['月']))].length||1;
+  const avgA = totA/mA, avgB = totB/mB;
+
+  const toM = v=>+(v/10000).toFixed(1);
+  const fmt  = v=>toM(v).toLocaleString()+'万';
+
+  const panels = [
+    { label: pd.A.label+' 合計', val: fmt(totA), sub: '万元', bg:'#f4e4b8', bd:'#c89830' },
+    { label: pd.B.label+' 合計', val: fmt(totB), sub: '万元', bg:'#b8d8f4', bd:'#5a9fd4' },
+    { label: '差分 (B-A)',       val: (diff>=0?'+':'')+fmt(diff),
+      sub: '万元', bg: diff>=0?'#b8f4ce':'#f4b8c1', bd: diff>=0?'#3eb86a':'#c8707e' },
+    { label: 'YoY成長率',        val: yoy===null?'—':(yoy>=0?'+':'')+yoy.toFixed(1)+'%',
+      sub: pd.A.label+'→'+pd.B.label, bg: yoy>=0?'#b8f4ce':'#f4b8c1', bd: yoy>=0?'#3eb86a':'#c8707e' },
+    { label: '月平均 比較',      val: fmt(avgA)+'→'+fmt(avgB),
+      sub: '万元/月', bg:'#e0dcd8', bd:'#9a9490' },
+  ];
+
+  document.getElementById('yoyKpiGrid').innerHTML = panels.map(p=>`
+    <div style="background:${p.bg};border:1.5px solid ${p.bd};border-radius:var(--r);padding:11px 14px;">
+      <div style="font-size:9px;font-weight:700;color:${p.bd};text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">${p.label}</div>
+      <div style="font-size:16px;font-weight:700;color:var(--tp);line-height:1;">${p.val}</div>
+      <div style="font-size:10px;color:${p.bd};margin-top:3px;">${p.sub}</div>
+    </div>`).join('');
+}
+
+// ── Bar Chart (period A vs B) ──────────────────
+function renderYoyBarChart(){
+  const isJa = lang==='ja';
+  const pd   = YOY_PERIODS[yoyPeriod];
+  const toM  = v => +(v/10000).toFixed(1);
+
+  // Union of labels across both periods
+  const labelsA = getYoyLabels(pd.A, yoyAxis);
+  const labelsB = getYoyLabels(pd.B, yoyAxis);
+  // For month axis: strip year prefix for display when comparing FY24 vs FY25
+  const labelsDisplay = yoyAxis==='month' && yoyPeriod==='fy2425'
+    ? labelsA.map(l=>l.slice(2))   // "24/04" → "/04" → use month only
+    : labelsA;
+
+  // One grouped pair per series
+  const datasets = [];
+  yoySeries.forEach((s, si)=>{
+    const pal = SERIES_PALETTE[s.colorIdx];
+    const mapA = yoyAgg(s.prod, s.ch, pd.A, yoyAxis);
+    const mapB = yoyAgg(s.prod, s.ch, pd.B, yoyAxis);
+    const label = yoySeriesLabel(s);
+
+    // Period A bars = FY24: soft blue
+    const colorA_fill   = '#b8d8f4';
+    const colorA_stroke = '#5a9fd4';
+    // Period B bars = FY25: soft pink
+    const colorB_fill   = '#f4b8c1';
+    const colorB_stroke = '#c8707e';
+
+    datasets.push({
+      label: `${pd.A.label} (${label})`,
+      data: labelsA.map(l=>toM(mapA[l]||0)),
+      backgroundColor: colorA_fill + '99',
+      borderColor: colorA_stroke,
+      borderWidth: 1.5,
+      borderRadius: 3,
+      stack: `s${si}_A`,
+      datalabels:{
+        display: ctx => ctx.dataset.data[ctx.dataIndex] >= 5,
+        anchor:'end', align:'top',
+        formatter: v => v>=10?v.toFixed(0)+'万':'',
+        font:{size:8,weight:'600'}, color: colorA_stroke,
+      }
+    });
+    // Period B bars (FY25: solid pink)
+    datasets.push({
+      label: `${pd.B.label} (${label})`,
+      data: labelsA.map((l,i)=>toM(mapB[labelsB[i]]||0)),
+      backgroundColor: colorB_fill + 'dd',
+      borderColor: colorB_stroke,
+      borderWidth: 1.5,
+      borderRadius: 3,
+      stack: `s${si}_B`,
+      datalabels:{
+        display: ctx => ctx.dataset.data[ctx.dataIndex] >= 5,
+        anchor:'end', align:'top',
+        formatter: v => v>=10?v.toFixed(0)+'万':'',
+        font:{size:8,weight:'600'}, color: colorB_stroke,
+      }
+    });
+  });
+
+  // Use month abbreviations as X labels
+  const xLabels = yoyAxis==='month' && yoyPeriod==='fy2425'
+    ? labelsA.map(l=>l.slice(5)) // "2024/04" → "04"
+    : labelsA;
+
+  document.getElementById('yoyBarTitle').textContent =
+    `${pd.A.label} vs ${pd.B.label} — 実数比較（万元）`;
+  document.getElementById('yoyBarSub').textContent =
+    `${yoyAxis==='month'?'月次':yoyAxis==='quarter'?'四半期':'年度'} · 万元 · 青=${pd.A.label}、ピンク=${pd.B.label}`;
+
+  if(yoyBarChartObj) yoyBarChartObj.destroy();
+  const maxVal = Math.max(...datasets.flatMap(d=>d.data), 1);
+  yoyBarChartObj = new Chart(document.getElementById('yoyBarChart').getContext('2d'),{
+    type:'bar',
+    data:{ labels: xLabels, datasets },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index', intersect:false},
+      plugins:{
+        legend:{ position:'top', labels:{font:{size:10},boxWidth:11,
+          filter: (item,data) => {
+            // Show only one legend per series (skip duplicates)
+            const seen = new Set();
+            return data.datasets.filter((d,i)=>i<=item.datasetIndex)
+              .every((d,i)=>{
+                if(i===item.datasetIndex) return true;
+                return d.stack !== item.datasetIndex;
+              });
+          }
+        }},
+        tooltip:{callbacks:{
+          label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}万元`
+        }}
+      },
+      scales:{
+        x:{ ticks:{font:{size:10}}, grid:{display:false} },
+        y:{ ticks:{font:{size:11}, callback:v=>v+'万'},
+            grid:{color:'#f0ebe5'}, suggestedMax: maxVal*1.2 }
+      }
+    },
+    plugins:[ChartDataLabels]
+  });
+
+  // Legend
+  const legendItems = [
+    { color:'#b8d8f4', stroke:'#5a9fd4', label: pd.A.label },
+    { color:'#f4b8c1', stroke:'#c8707e', label: pd.B.label },
+  ];
+  document.getElementById('yoyLegend').innerHTML = [
+    ...legendItems,
+    ...yoySeries.slice(1).map(s=>{
+      const pal = SERIES_PALETTE[s.colorIdx];
+      return { color: pal.fill, stroke: pal.stroke, label: yoySeriesLabel(s) };
+    })
+  ].map(item=>`<div style="display:flex;align-items:center;gap:5px;">
+    <div style="width:11px;height:11px;border-radius:3px;background:${item.color};border:1.5px solid ${item.stroke};"></div>
+    <span style="font-size:11px;color:var(--ts);">${item.label}</span>
+  </div>`).join('');
+}
+
+// ── YoY Line Chart ─────────────────────────────
+function renderYoyLineChart(){
+  const pd  = YOY_PERIODS[yoyPeriod];
+  const toM = v => +(v/10000).toFixed(1);
+  const labelsA = getYoyLabels(pd.A, yoyAxis);
+  const labelsB = getYoyLabels(pd.B, yoyAxis);
+  const xLabels = yoyAxis==='month' && yoyPeriod==='fy2425'
+    ? labelsA.map(l=>l.slice(5)) : labelsA;
+
+  const datasets = yoySeries.map((s, si)=>{
+    const pal  = SERIES_PALETTE[s.colorIdx];
+    const mapA = yoyAgg(s.prod, s.ch, pd.A, yoyAxis);
+    const mapB = yoyAgg(s.prod, s.ch, pd.B, yoyAxis);
+    const vals = labelsA.map((la,i)=>{
+      const a = mapA[la]||0;
+      const b = mapB[labelsB[i]]||0;
+      return a>0 ? +((b-a)/a*100).toFixed(1) : null;
+    });
+    return {
+      label: yoySeriesLabel(s),
+      data: vals,
+      borderColor: pal.stroke,
+      backgroundColor: pal.fill+'40',
+      borderWidth: 2.5,
+      pointRadius: 4, pointHoverRadius: 7,
+      tension: 0.3,
+      fill: { target:'origin',
+        above: pal.fill+'50',
+        below: '#f4b8c140'
+      },
+      datalabels:{
+        display: ctx => {
+          const v = ctx.dataset.data[ctx.dataIndex];
+          return v !== null && Math.abs(v) >= 15;
+        },
+        anchor:'top', align:'top',
+        formatter: v => v===null?'':(v>=0?'+':'')+v.toFixed(0)+'%',
+        font:{size:9,weight:'700'},
+        color: ctx => {
+          const v = ctx.dataset.data[ctx.dataIndex];
+          return v>=0 ? '#2e7d4f' : '#c0392b';
+        }, offset: 2
+      }
+    };
+  });
+
+  // 0% baseline
+  datasets.push({
+    label:'0%', data: labelsA.map(()=>0),
+    borderColor:'#888', borderWidth:1.5, borderDash:[6,3],
+    pointRadius:0, backgroundColor:'transparent',
+    datalabels:{display:false}, fill:false
+  });
+
+  if(yoyLineChartObj) yoyLineChartObj.destroy();
+  yoyLineChartObj = new Chart(document.getElementById('yoyLineChart').getContext('2d'),{
+    type:'line',
+    data:{ labels: xLabels, datasets },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index', intersect:false},
+      plugins:{
+        legend:{ position:'top', labels:{font:{size:10},boxWidth:11,
+          filter: item => item.text !== '0%' }},
+        tooltip:{callbacks:{
+          label: ctx => ctx.dataset.label==='0%' ? null
+            : ` ${ctx.dataset.label}: ${ctx.parsed.y===null?'—':(ctx.parsed.y>=0?'+':'')+ctx.parsed.y+'%'}`
+        }}
+      },
+      scales:{
+        x:{ ticks:{font:{size:10}}, grid:{display:false} },
+        y:{ ticks:{font:{size:11}, callback:v=>(v>=0?'+':'')+v+'%'},
+            grid:{color:'#f0ebe5'},
+            afterDataLimits: axis => {
+              const ext = Math.max(Math.abs(axis.min), Math.abs(axis.max), 20);
+              axis.min = -ext; axis.max = ext;
+            }
+          }
+      }
+    },
+    plugins:[ChartDataLabels]
+  });
+}
+
+// ── Cross Table ────────────────────────────────
+function renderYoyTable(){
+  const isJa = lang==='ja';
+  const pd = YOY_PERIODS[yoyPeriod];
+  const toM = v => +(v/10000).toFixed(1);
+  const fmtM = v => toM(v).toLocaleString();
+  const ALL_P = ['學習商品','周邊商品','Mirafeel'];
+  const ALL_C = ['WEB','TM','KOL','EC','其他'];
+
+  function periodTotal(prod, ch, side){
+    return RAW.filter(r =>
+      side.months(r['月']) &&
+      (prod==='__ALL__'||r['商品群']===prod) &&
+      (ch==='__ALL__'||r['管道']===ch)
+    ).reduce((s,r)=>s+r['売上'],0);
+  }
+
+  let html = `<table style="width:100%;border-collapse:collapse;font-size:11px;">
+    <thead>
+      <tr>
+        <th style="text-align:left;padding:7px 10px;background:var(--bg);border-bottom:1.5px solid var(--bdr);color:var(--ts);" rowspan="2">商品群</th>
+        <th style="text-align:left;padding:7px 10px;background:var(--bg);border-bottom:1.5px solid var(--bdr);color:var(--ts);" rowspan="2">管道</th>
+        ${ALL_C.map(c=>`<th colspan="3" style="text-align:center;padding:6px 8px;background:var(--bg);border-bottom:1px solid var(--bdr);color:var(--ts);font-size:10px;">${c}</th>`).join('')}
+        <th colspan="3" style="text-align:center;padding:6px 8px;background:var(--bg);border-bottom:1px solid var(--bdr);color:var(--ts);font-size:10px;">合計</th>
+      </tr>
+      <tr>
+        ${ALL_C.concat(['合計']).map(()=>`
+          <th style="text-align:right;padding:4px 8px;background:var(--bg);border-bottom:1.5px solid var(--bdr);color:#c89830;font-size:10px;white-space:nowrap;">${pd.A.label}</th>
+          <th style="text-align:right;padding:4px 8px;background:var(--bg);border-bottom:1.5px solid var(--bdr);color:#5a9fd4;font-size:10px;white-space:nowrap;">${pd.B.label}</th>
+          <th style="text-align:right;padding:4px 8px;background:var(--bg);border-bottom:1.5px solid var(--bdr);color:var(--ts);font-size:10px;">YoY</th>`).join('')}
+      </tr>
+    </thead><tbody>`;
+
+  ALL_P.forEach(prod=>{
+    let rowTotA=0, rowTotB=0;
+    const cells = ALL_C.map(ch=>{
+      const a = periodTotal(prod, ch, pd.A);
+      const b = periodTotal(prod, ch, pd.B);
+      rowTotA+=a; rowTotB+=b;
+      const yoy = a>0 ? ((b-a)/a*100) : null;
+      const cls = yoy===null?'color:var(--tm)':yoy>=0?'color:#2e7d4f;font-weight:600':'color:#c0392b;font-weight:600';
+      return `<td style="text-align:right;padding:5px 8px;border-bottom:1px solid var(--bdr);color:#c89830;">${a?fmtM(a):'—'}</td>
+              <td style="text-align:right;padding:5px 8px;border-bottom:1px solid var(--bdr);color:#5a9fd4;">${b?fmtM(b):'—'}</td>
+              <td style="text-align:right;padding:5px 8px;border-bottom:1px solid var(--bdr);${cls}">${yoy===null?'—':(yoy>=0?'▲':'▼')+Math.abs(yoy).toFixed(0)+'%'}</td>`;
+    }).join('');
+    const yoyRow = rowTotA>0 ? ((rowTotB-rowTotA)/rowTotA*100) : null;
+    const rowCls = yoyRow===null?'color:var(--tm)':yoyRow>=0?'color:#2e7d4f;font-weight:600':'color:#c0392b;font-weight:600';
+    html += `<tr onmouseover="this.style.background='#fdf5f7'" onmouseout="this.style.background=''">
+      <td style="padding:5px 10px;border-bottom:1px solid var(--bdr);font-weight:600;" rowspan="1">${prod}</td>
+      <td style="padding:5px 10px;border-bottom:1px solid var(--bdr);color:var(--ts);">ALL</td>
+      ${cells}
+      <td style="text-align:right;padding:5px 8px;border-bottom:1px solid var(--bdr);color:#c89830;font-weight:700;">${fmtM(rowTotA)}</td>
+      <td style="text-align:right;padding:5px 8px;border-bottom:1px solid var(--bdr);color:#5a9fd4;font-weight:700;">${fmtM(rowTotB)}</td>
+      <td style="text-align:right;padding:5px 8px;border-bottom:1px solid var(--bdr);${rowCls}">${yoyRow===null?'—':(yoyRow>=0?'▲':'▼')+Math.abs(yoyRow).toFixed(0)+'%'}</td>
+    </tr>`;
+  });
+
+  // Grand total row
+  const gA = RAW.filter(r=>pd.A.months(r['月'])).reduce((s,r)=>s+r['売上'],0);
+  const gB = RAW.filter(r=>pd.B.months(r['月'])).reduce((s,r)=>s+r['売上'],0);
+  const gY = gA>0?((gB-gA)/gA*100):null;
+  const gCls = gY===null?'':gY>=0?'color:#2e7d4f;font-weight:700':'color:#c0392b;font-weight:700';
+  const emptyChannels = ALL_C.map(()=>`<td colspan="3" style="padding:5px 8px;border-bottom:1.5px solid var(--bdr);"></td>`).join('');
+  html += `<tr style="background:#fdf8f5;font-weight:700;border-top:1.5px solid var(--bdr);">
+    <td colspan="2" style="padding:5px 10px;border-top:1.5px solid var(--bdr);">全体合計</td>
+    ${emptyChannels}
+    <td style="text-align:right;padding:5px 8px;border-top:1.5px solid var(--bdr);color:#c89830;">${fmtM(gA)}</td>
+    <td style="text-align:right;padding:5px 8px;border-top:1.5px solid var(--bdr);color:#5a9fd4;">${fmtM(gB)}</td>
+    <td style="text-align:right;padding:5px 8px;border-top:1.5px solid var(--bdr);${gCls}">${gY===null?'—':(gY>=0?'▲':'▼')+Math.abs(gY).toFixed(0)+'%'}</td>
+  </tr>`;
+
+  html += '</tbody></table>';
+  document.getElementById('yoyTableWrap').innerHTML = html;
+}
+
+// ── Main render ────────────────────────────────
+function renderYoY(){
+  renderYoyKPI();
+  renderYoyBarChart();
+  renderYoyLineChart();
+  renderYoyTable();
+}
+
+function renderYoYTab(){
+  renderYoyTags();
+  renderYoY();
+}
+
 </script>
 
 >
@@ -1799,78 +2243,91 @@ function setLang(l){
 <!-- TAB: BCL DB -->
 <div id="paneBCL" style="display:none;">
 
-  <!-- BCL KPI -->
-  <div class="kpi-grid" id="bclKpiGrid" style="grid-template-columns:1fr;gap:10px;"></div>
-
-  <!-- Insight banner -->
-  <div style="background:#f0f8ff;border:1px solid #b8d8f4;border-radius:var(--r);margin-bottom:12px;">
-    <div style="display:flex;align-items:center;gap:6px;padding:11px 16px;cursor:pointer;user-select:none;"
-         onclick="toggleSection('bclInsightBody','bclInsightArrow')">
-      <span style="font-size:14px;">💡</span>
-      <span style="font-size:13px;font-weight:700;color:#5a9fd4;" data-i18n="bclInsightTitle">DBと売上の関係性インサイト</span>
-      <span id="bclInsightArrow" style="margin-left:auto;font-size:13px;color:#5a9fd4;">▸</span>
-    </div>
-    <div id="bclInsightBody" style="display:none;padding:0 16px 12px;">
-      <div id="bclInsight" style="font-size:12px;color:var(--tp);line-height:1.7;"></div>
-    </div>
+  <!-- Sub-tab nav -->
+  <div style="display:flex;gap:0;margin-bottom:14px;border-bottom:1.5px solid var(--bdr);">
+    <button class="sub-tab-btn active" id="subBclStatus" onclick="switchBclSub('status')">🗂 DB現況</button>
+    <button class="sub-tab-btn" id="subBclAcq" onclick="switchBclSub('acq')">📥 獲得分析</button>
   </div>
 
-  <!-- Charts row -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+  <!-- ── SUB: DB現況 ── -->
+  <div id="subPaneBclStatus">
 
-    <!-- Monthly new BCL -->
-    <div class="chart-card">
+    <!-- Population share KPI -->
+    <div style="margin-bottom:8px;">
+      <div style="font-size:10px;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">
+        📊 台湾出生年別 人口シェア（2026/04現在）
+        <span style="font-size:9px;font-weight:400;color:var(--tm);margin-left:8px;">※出生数出典: 中華民国内政部 ※BCL=有効会員現在月齢ベース</span>
+      </div>
+      <div id="bclPopGrid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;"></div>
+    </div>
+
+    <!-- DB summary KPI -->
+    <div id="bclKpiGrid" style="margin-bottom:12px;"></div>
+
+    <!-- Insight (collapsible) -->
+    <div style="background:#f0f8ff;border:1px solid #b8d8f4;border-radius:var(--r);margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:6px;padding:11px 16px;cursor:pointer;user-select:none;"
+           onclick="toggleSection('bclInsightBody','bclInsightArrow')">
+        <span style="font-size:14px;">💡</span>
+        <span style="font-size:13px;font-weight:700;color:#5a9fd4;" data-i18n="bclInsightTitle">DBと売上の関係性インサイト</span>
+        <span id="bclInsightArrow" style="margin-left:auto;font-size:13px;color:#5a9fd4;">▸</span>
+      </div>
+      <div id="bclInsightBody" style="display:none;padding:0 16px 12px;">
+        <div id="bclInsight" style="font-size:12px;color:var(--tp);line-height:1.7;"></div>
+      </div>
+    </div>
+
+    <!-- Age donut + rank breakdown -->
+    <div style="display:grid;grid-template-columns:300px 1fr;gap:12px;margin-bottom:12px;">
+      <div class="chart-card">
+        <div class="chart-title" style="margin-bottom:10px;" data-i18n="bclDonutTitle">月齢ランク分布（現在月齢）</div>
+        <div style="font-size:10px;color:var(--ts);margin-bottom:8px;">※2026/04時点・生年月から算出</div>
+        <div style="position:relative;height:220px;"><canvas id="bclDonutChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title" style="margin-bottom:10px;" data-i18n="bclTableTitle">月齢ランク別 会員数（現在月齢）</div>
+        <div id="bclRankTable"></div>
+      </div>
+    </div>
+
+  </div><!-- /subPaneBclStatus -->
+
+  <!-- ── SUB: 獲得分析 ── -->
+  <div id="subPaneBclAcq" style="display:none;">
+
+    <!-- Monthly new BCL chart -->
+    <div class="chart-card" style="margin-bottom:12px;">
       <div class="chart-tb">
         <div>
           <div class="chart-title" data-i18n="bclMonthlyTitle">月次 新規BCL登録数</div>
           <div class="chart-sub" data-i18n="bclMonthlySubtitle">有効会員（青）＋無効会員（ピンク）・2024/04〜</div>
         </div>
-      </div>
-      <div style="position:relative;height:260px;"><canvas id="bclMonthlyChart"></canvas></div>
-    </div>
-
-    <!-- Cumulative BCL -->
-    <div class="chart-card">
-      <div class="chart-tb">
-        <div>
-          <div class="chart-title" data-i18n="bclCumTitle">累計BCL（有効会員）推移</div>
-          <div class="chart-sub" data-i18n="bclCumSubtitle">2024/01〜現在　DB資産の積み上がり</div>
+        <div style="display:flex;gap:5px;">
+          <button class="cb active" id="bclAgeAbs" onclick="setBclAgeMode('abs')" data-i18n="actual">実数</button>
+          <button class="cb" id="bclAgePct" onclick="setBclAgeMode('pct')" data-i18n="ratio">比率</button>
         </div>
       </div>
-      <div style="position:relative;height:260px;"><canvas id="bclCumChart"></canvas></div>
+      <div style="position:relative;height:280px;"><canvas id="bclMonthlyChart"></canvas></div>
     </div>
 
-  </div>
-
-  <!-- Age distribution -->
-  <div class="chart-card" style="margin-bottom:12px;">
-    <div class="chart-tb">
-      <div>
-        <div class="chart-title" data-i18n="bclAgeTitle">月齢分布 × 月次（有効会員）</div>
-        <div class="chart-sub" data-i18n="bclAgeSubtitle">登録時月齢バケット別構成（BCL活化開始時点）— ※現在月齢とは異なります</div>
+    <!-- Age × month stacked chart -->
+    <div class="chart-card" style="margin-bottom:12px;">
+      <div class="chart-tb">
+        <div>
+          <div class="chart-title" data-i18n="bclAgeTitle">登録時月齢ランク × 月次</div>
+          <div class="chart-sub">登録時月齢（BCL活化開始時点）• 現在月齢とは異なります</div>
+        </div>
       </div>
-      <div style="display:flex;gap:5px;align-items:center;">
-        <button class="cb active" id="bclAgeAbs" onclick="setBclAgeMode('abs')" data-i18n="actual">実数</button>
-        <button class="cb" id="bclAgePct" onclick="setBclAgeMode('pct')" data-i18n="ratio">比率</button>
-      </div>
-    </div>
-    <div style="position:relative;height:280px;"><canvas id="bclAgeChart"></canvas></div>
-  </div>
-
-  <!-- Age donut + table row -->
-  <div style="display:grid;grid-template-columns:320px 1fr;gap:12px;margin-bottom:12px;">
-
-    <div class="chart-card">
-      <div class="chart-title" style="margin-bottom:12px;" data-i18n="bclDonutTitle">月齢分布 全体構成比</div>
-      <div style="position:relative;height:220px;"><canvas id="bclDonutChart"></canvas></div>
+      <div style="position:relative;height:280px;"><canvas id="bclAgeChart"></canvas></div>
     </div>
 
+    <!-- Cross table -->
     <div class="chart-card">
-      <div class="chart-title" style="margin-bottom:12px;" data-i18n="bclTableTitle">月齢バケット × 月次 クロス集計</div>
+      <div class="chart-title" style="margin-bottom:10px;" data-i18n="bclTableTitle2">月齢ランク × 月次 クロス集計（登録時月齢）</div>
       <div style="overflow-x:auto;max-height:260px;overflow-y:auto;" id="bclAgeTable"></div>
     </div>
 
-  </div>
+  </div><!-- /subPaneBclAcq -->
 
 </div><!-- /paneBCL -->
 
@@ -1918,8 +2375,105 @@ function setLang(l){
 
 </div><!-- /paneMember -->
 
+<!-- TAB: YoY COMPARISON -->
+<div id="paneYoY" style="display:none;">
+
+  <!-- Controls -->
+  <div class="ctrl-panel" style="margin-bottom:12px;">
+    <div class="ctrl-rows">
+
+      <!-- Axis -->
+      <div class="ctrl-row">
+        <span class="ctrl-row-label" data-i18n="ctrlAxis">時間軸</span>
+        <div class="bg" id="yoyAxisGroup">
+          <button class="btn active" onclick="setYoyAxis('month')"  data-val="month"   data-i18n="month">月次</button>
+          <button class="btn"        onclick="setYoyAxis('quarter')" data-val="quarter" data-i18n="quarter">四半期</button>
+          <button class="btn"        onclick="setYoyAxis('year')"    data-val="year"    data-i18n="year">年度</button>
+        </div>
+        <div class="sep"></div>
+        <span class="ctrl-row-label" data-i18n="yoyCompare">比較期間</span>
+        <div class="bg" id="yoyPeriodGroup">
+          <button class="btn active" onclick="setYoyPeriod('fy2425')"  data-val="fy2425">FY24 vs FY25</button>
+          <button class="btn"        onclick="setYoyPeriod('h1')"      data-val="h1">前半同士（4〜9月）</button>
+          <button class="btn"        onclick="setYoyPeriod('h2')"      data-val="h2">後半同士（10〜3月）</button>
+        </div>
+      </div>
+
+      <!-- Series picker -->
+      <div class="ctrl-row">
+        <span class="ctrl-row-label" data-i18n="spTitle">比較系列</span>
+        <div class="bg">
+          <select id="yoySelProduct" class="sp-select">
+            <option value="__ALL__" data-i18n-opt="allProd">全商品群</option>
+            <option value="學習商品" data-i18n-opt="p1">學習商品</option>
+            <option value="周邊商品" data-i18n-opt="p2">周邊商品</option>
+            <option value="Mirafeel">Mirafeel</option>
+          </select>
+          <select id="yoySelChannel" class="sp-select">
+            <option value="__ALL__" data-i18n-opt="allCh">全管道</option>
+            <option value="WEB">WEB</option>
+            <option value="TM">TM</option>
+            <option value="KOL">KOL</option>
+            <option value="EC">EC</option>
+            <option value="其他" data-i18n-opt="other">其他</option>
+          </select>
+          <button class="sp-add-btn" onclick="addYoySeries()" data-i18n="addBtn">＋ 新増系列</button>
+          <button class="sp-clear-btn" onclick="clearYoySeries()" data-i18n="clearBtn">全削除</button>
+        </div>
+      </div>
+
+      <!-- Series tags -->
+      <div class="ctrl-row">
+        <span class="ctrl-row-label"></span>
+        <div class="series-tags" id="yoySeriesTags"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- KPI row -->
+  <div id="yoyKpiGrid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px;"></div>
+
+  <!-- Upper chart: actual values FY24 vs FY25 -->
+  <div class="chart-card" style="margin-bottom:12px;">
+    <div class="chart-tb">
+      <div>
+        <div class="chart-title" id="yoyBarTitle">—</div>
+        <div class="chart-sub"  id="yoyBarSub">—</div>
+      </div>
+      <div id="yoyLegend" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;"></div>
+    </div>
+    <div style="position:relative;height:340px;"><canvas id="yoyBarChart"></canvas></div>
+  </div>
+
+  <!-- Lower chart: YoY % -->
+  <div class="chart-card" style="margin-bottom:12px;">
+    <div class="chart-tb">
+      <div>
+        <div class="chart-title" data-i18n="yoyLineTitle">前年比（YoY）推移</div>
+        <div class="chart-sub"  data-i18n="yoyLineSub">0%ライン基準・プラスが改善</div>
+      </div>
+    </div>
+    <div style="position:relative;height:220px;"><canvas id="yoyLineChart"></canvas></div>
+  </div>
+
+  <!-- Cross table -->
+  <div class="table-card">
+    <div class="table-title" data-i18n="yoyTableTitle">クロス集計 — 商品群 × 管道（万元）</div>
+    <div class="tw" id="yoyTableWrap"></div>
+  </div>
+
+</div><!-- /paneYoY -->
+
 
 <style>
+.sub-tab-btn{
+  border:none;background:none;font-family:inherit;font-size:12px;font-weight:600;
+  padding:8px 18px;cursor:pointer;color:var(--ts);border-bottom:2px solid transparent;
+  margin-bottom:-1.5px;transition:all .15s;
+}
+.sub-tab-btn:hover{color:var(--tp);}
+.sub-tab-btn.active{color:#5a9fd4;border-bottom-color:#5a9fd4;}
 .tab-btn{
   border:none;background:none;font-family:inherit;font-size:13px;font-weight:600;
   padding:10px 22px;cursor:pointer;color:var(--ts);border-bottom:3px solid transparent;
@@ -1928,6 +2482,32 @@ function setLang(l){
 .tab-btn:hover{color:var(--tp);}
 .tab-btn.active{color:var(--m1d);border-bottom-color:var(--m1d);}
 </style>
+
+<script>
+// ── setLang ──────────────────────────────────
+function setLang(l){
+  lang = l;
+  applyI18n();
+  renderTagsUI();
+  if(currentTab==='bcl')         renderBCL();
+  else if(currentTab==='member') renderMemberTab();
+  else if(currentTab==='yoy')    renderYoYTab();
+  else                           renderAllFull();
+}
+
+// ── Add YoY i18n keys ────────────────────────
+(function(){
+  const extra = {
+    tabYoY:       {ja:'📈 経年比較',     zh:'📈 經年比較'},
+    yoyCompare:   {ja:'比較期間',         zh:'比較期間'},
+    yoyLineTitle: {ja:'前年比（YoY）推移', zh:'前年比（YoY）趨勢'},
+    yoyLineSub:   {ja:'0%ライン基準・プラスが改善', zh:'以0%為基準・正值為改善'},
+    yoyTableTitle:{ja:'クロス集計 — 商品群 × 管道（万元）', zh:'交叉分析表 — 商品群 × 管道（萬元）'},
+  };
+  Object.assign(ALL_I18N, extra);
+  applyI18n();
+})();
+</script>
 
 </body>
 </html>
