@@ -676,34 +676,17 @@ function renderChart(){
         backgroundColor:pal.fill+'cc',borderColor:pal.stroke,
         borderWidth:1.5,borderRadius:isStacked?0:4,
         datalabels: isPct ? {
-          // 比率モード: 各セグメント内に%表示
           display: ctx => ctx.dataset.data[ctx.dataIndex] >= 5,
           anchor:'center', align:'center',
           formatter: v => v.toFixed(0)+'%',
           font:{size:9,weight:'700'}, color:'#333'
-        } : isStacked ? [
-          // ① 各セグメント内の値（系列色・小フォント）
-          {
-            display: ctx => (+ctx.dataset.data[ctx.dataIndex]||0) >= 3,
-            anchor:'center', align:'center',
-            formatter: v => fmtManR(v*10000),
-            font:{size:8,weight:'600'}, color: pal.stroke, clamp:true
-          },
-          // ② 最後のdatasetのみスタック合計をバー上部に（datasets参照時点では配列完成済み）
-          {
-            display: ctx => {
-              if(ctx.datasetIndex !== datasets.length - 1) return false;
-              return datasets.reduce((sum,ds)=>(+ds.data[ctx.dataIndex]||0)+sum, 0) > 0;
-            },
-            anchor:'end', align:'top',
-            formatter: (_v, ctx) => {
-              const total = datasets.reduce((sum,ds)=>(+ds.data[ctx.dataIndex]||0)+sum, 0);
-              return fmtManR(total*10000);
-            },
-            font:{size:9,weight:'700'}, color:'#444', offset:2
-          }
-        ] : {
-          // 非積み上げ: 各バー上に値
+        } : isStacked ? {
+          // 各セグメント内の値（系列色・小フォント）
+          display: ctx => (+ctx.dataset.data[ctx.dataIndex]||0) >= 3,
+          anchor:'center', align:'center',
+          formatter: v => fmtManR(v*10000),
+          font:{size:8,weight:'600'}, color: pal.stroke, clamp:true
+        } : {
           display: ctx => (+ctx.dataset.data[ctx.dataIndex]||0) > 0,
           anchor:'end', align:'top',
           formatter: v => fmtManR(v*10000),
@@ -712,6 +695,28 @@ function renderChart(){
       });
     }
   });
+
+  // 積み上げ実数モード: 合計ラベル専用の透明datasetを最後に追加
+  // forEach完了後なので seriesData が全て確定している
+  if(isStacked && !isPct && !isLine){
+    const totals = labels.map((_,li)=>
+      seriesData.reduce((sum,sd)=>sum+(+sd[li]||0), 0)
+    );
+    datasets.push({
+      label:'__total__',
+      data: totals,
+      backgroundColor:'transparent',
+      borderColor:'transparent',
+      borderWidth:0,
+      stack:'__total__',  // 別stackに分けて高さに影響させない
+      datalabels:{
+        display: ctx => (+ctx.dataset.data[ctx.dataIndex]||0) > 0,
+        anchor:'end', align:'top',
+        formatter: v => fmtManR(v*10000),
+        font:{size:9,weight:'700'}, color:'#444', offset:2
+      }
+    });
+  }
 
   // ── Total-on-top plugin registered once at top level ──────
 
@@ -738,6 +743,7 @@ function renderChart(){
 
         tooltip:{callbacks:{
           label:ctx=>{
+            if(ctx.dataset.label==='__total__') return null;
             const v=ctx.parsed.y;
             return ` ${ctx.dataset.label}: ${isPct?v.toFixed(1)+'%':v.toLocaleString()+'万元'}`;
           }
