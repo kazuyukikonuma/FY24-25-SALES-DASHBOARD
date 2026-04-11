@@ -704,10 +704,7 @@ function renderChart(){
 
       plugins:{
         legend:{display:false},
-        stackTotals: isStacked && !isPct ? {
-          active: true,
-          fmt: v => fmtManR(v*10000)
-        } : { active: false },
+
         tooltip:{callbacks:{
           label:ctx=>{
             const v=ctx.parsed.y;
@@ -894,30 +891,7 @@ renderTagsUI();
 // renderAllFull is defined later in the script; use setTimeout to ensure all functions are loaded
 setTimeout(()=>{ renderAllFull(); }, 0);
 
-// ── stackTotals plugin: show sum above stacked bar ──
-// Registered globally; config passed via options.plugins.stackTotals
-Chart.register({
-  id: 'stackTotals',
-  afterDatasetsDraw(chart){
-    const cfg = (chart.options.plugins||{}).stackTotals;
-    if(!cfg || !cfg.active) return;
-    const {ctx, data, scales:{x, y}} = chart;
-    if(!x || !y) return;
-    const totals = data.labels.map((_,li)=>
-      data.datasets.reduce((s,ds)=>s+(+ds.data[li]||0), 0)
-    );
-    ctx.save();
-    ctx.font = 'bold 10px Outfit, Noto Sans JP, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
-    ctx.fillStyle = '#444';
-    totals.forEach((tot, li) => {
-      if(tot <= 0) return;
-      ctx.fillText(cfg.fmt(tot), x.getPixelForValue(li), y.getPixelForValue(tot) - 4);
-    });
-    ctx.restore();
-  }
-});
+
 
 // ══════════════════════════════════════════════
 // PRODUCT DATA (學習商品 2024〜)
