@@ -672,21 +672,12 @@ function renderChart(){
         label:seriesLabel(s),data:vals,
         backgroundColor:pal.fill+'cc',borderColor:pal.stroke,
         borderWidth:1.5,borderRadius:isStacked?0:4,
-        datalabels:{
-          // Always show, anchor end/top so label sits above each segment
-          display: ctx => {
-            const v = ctx.dataset.data[ctx.dataIndex];
-            if(isPct) return v >= 2;
-            return v > 0;
-          },
-          anchor: 'end',
-          align:  'end',
-          formatter: v => isPct ? v.toFixed(0)+'%' : (v>=1 ? fmtManR(v*10000)+'万' : ''),
-          font:{size:8,weight:'600'},
-          color: pal.stroke,
-          offset: 1,
-          clamp: false,
-        }
+        datalabels: isPct ? {
+          display: ctx => ctx.dataset.data[ctx.dataIndex] >= 5,
+          anchor:'center', align:'center',
+          formatter: v => v.toFixed(0)+'%',
+          font:{size:9,weight:'700'}, color:'#333'
+        } : { display: false }  // 実数は合計のみ(stackTotalsプラグイン)
       };
     }
   });
