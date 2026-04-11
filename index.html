@@ -2003,7 +2003,7 @@ function renderYoyBarChart(){
       datalabels:{
         display: ctx => ctx.dataset.data[ctx.dataIndex] >= 5,
         anchor:'end', align:'top',
-        formatter: v => v>=10?v.toFixed(0)+'万':'',
+        formatter: v => v>=10?v.toFixed(0):'',
         font:{size:8,weight:'600'}, color: colorA_stroke,
       }
     });
@@ -2019,7 +2019,7 @@ function renderYoyBarChart(){
       datalabels:{
         display: ctx => ctx.dataset.data[ctx.dataIndex] >= 5,
         anchor:'end', align:'top',
-        formatter: v => v>=10?v.toFixed(0)+'万':'',
+        formatter: v => v>=10?v.toFixed(0):'',
         font:{size:8,weight:'600'}, color: colorB_stroke,
       }
     });
