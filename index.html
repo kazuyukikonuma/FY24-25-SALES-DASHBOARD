@@ -716,6 +716,27 @@ function renderChart(){
     data:{labels,datasets},
     options:{
       responsive:true,maintainAspectRatio:false,
+      animation:{
+        duration:0,
+        onComplete(){
+          if(!isStacked||isPct) return;
+          const {ctx,scales:{x,y}} = this;
+          if(!x||!y) return;
+          const totals = labels.map((_,li)=>
+            seriesData.reduce((sum,sd)=>sum+(+sd[li]||0),0)
+          );
+          ctx.save();
+          ctx.font='bold 9px Outfit,Noto Sans JP,sans-serif';
+          ctx.fillStyle='#333';
+          ctx.textAlign='center';
+          ctx.textBaseline='bottom';
+          totals.forEach((tot,li)=>{
+            if(tot<=0) return;
+            ctx.fillText(Math.floor(tot).toLocaleString(), x.getPixelForValue(li), y.getPixelForValue(tot)-3);
+          });
+          ctx.restore();
+        }
+      },
       interaction:{mode:'index',intersect:false},
 
       plugins:{
