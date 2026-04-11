@@ -151,6 +151,7 @@ tr:not(.rt):not(.ryoy):hover td{background:#fdf5f7;}
 <div style="display:flex;gap:0;margin-bottom:14px;border-bottom:2px solid var(--bdr);">
   <button class="tab-btn active" id="tabSales" onclick="switchTab('sales')" data-i18n="tabSales">📊 売上分析</button>
   <button class="tab-btn" id="tabYoY" onclick="switchTab('yoy')" data-i18n="tabYoY">📈 経年比較</button>
+  <button class="tab-btn" id="tabKPI" onclick="switchTab('kpi')">🎯 LC8T KPI</button>
   <button class="tab-btn" id="tabBCL" onclick="switchTab('bcl')" data-i18n="tabBCL">👥 BCL DB</button>
   <button class="tab-btn" id="tabMember" onclick="switchTab('member')" data-i18n="tabMember">🔄 新旧会員比率</button>
 </div>
@@ -1228,8 +1229,8 @@ let currentTab = 'sales';
 
 function switchTab(tab){
   currentTab = tab;
-  const paneMap = {sales:'paneSales', bcl:'paneBCL', member:'paneMember', yoy:'paneYoY'};
-  const tabMap  = {sales:'tabSales',  bcl:'tabBCL',  member:'tabMember',  yoy:'tabYoY'};
+  const paneMap = {sales:'paneSales', bcl:'paneBCL', member:'paneMember', yoy:'paneYoY', kpi:'paneKPI'};
+  const tabMap  = {sales:'tabSales',  bcl:'tabBCL',  member:'tabMember',  yoy:'tabYoY',  kpi:'tabKPI'};
   Object.entries(paneMap).forEach(([k,id])=>{
     const el = document.getElementById(id);
     if(el) el.style.display = k===tab ? '' : 'none';
@@ -1241,6 +1242,7 @@ function switchTab(tab){
   if(tab==='bcl')    renderBCL();
   if(tab==='member') renderMemberTab();
   if(tab==='yoy')    renderYoYTab();
+  if(tab==='kpi')    renderKPITab();
 }
 
 // ── Universal section toggle ────────────────
@@ -2382,6 +2384,75 @@ function renderYoYTab(){
 
 </div><!-- /paneBCL -->
 
+<!-- TAB: LC8T KPI -->
+<div id="paneKPI" style="display:none;">
+
+  <!-- Loading state -->
+  <div id="kpiLoadState" style="padding:40px;text-align:center;color:var(--ts);font-size:13px;">
+    データ読み込み中…
+  </div>
+
+  <!-- KPI summary cards -->
+  <div id="kpiSummaryGrid" style="display:none;">
+
+    <!-- Top alert banner -->
+    <div id="kpiAlertBanner" style="margin-bottom:12px;"></div>
+
+    <!-- 5 KPI cards -->
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px;" id="kpiTopCards"></div>
+
+    <!-- Main composite chart: GMV + LC8T funnel metrics -->
+    <div class="chart-card" style="margin-bottom:12px;">
+      <div class="chart-tb">
+        <div>
+          <div class="chart-title">GMV × 名単数 × 電銷転化率 — 月次推移</div>
+          <div class="chart-sub">売上（棒）+ 名単増加数（折れ線）+ 電銷転化率（折れ線）· 施策マーク付き</div>
+        </div>
+        <div id="kpiChartLegend" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:11px;"></div>
+      </div>
+      <div style="position:relative;height:340px;"><canvas id="kpiMainChart"></canvas></div>
+      <!-- Strategy annotations -->
+      <div id="kpiStrategyBar" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;padding:0 4px;min-height:24px;"></div>
+    </div>
+
+    <!-- Second row: EC CV rate + Tel list -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+
+      <div class="chart-card">
+        <div class="chart-title" style="margin-bottom:8px;">EC CV率 推移</div>
+        <div class="chart-sub" style="margin-bottom:10px;">EC契約数 ÷ 名単数（月次）· 目標6.51%</div>
+        <div style="position:relative;height:200px;"><canvas id="kpiCvChart"></canvas></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title" style="margin-bottom:8px;">電銷名単数 × 転化率</div>
+        <div class="chart-sub" style="margin-bottom:10px;">名単供給数（棒）+ 転化率%（折れ線）</div>
+        <div style="position:relative;height:200px;"><canvas id="kpiTelChart"></canvas></div>
+      </div>
+
+    </div>
+
+    <!-- Strategy log table -->
+    <div class="chart-card" style="margin-bottom:12px;">
+      <div class="chart-title" style="margin-bottom:10px;">📋 施策日曆（更新: data/strategy.csv）</div>
+      <div id="kpiStrategyTable" style="overflow-x:auto;"></div>
+    </div>
+
+    <!-- Data freshness + update guide -->
+    <div style="background:#fdf8f5;border:1px solid var(--bdr);border-radius:var(--r);padding:14px 18px;font-size:11px;color:var(--ts);">
+      <strong>📁 データ更新方法（詩雅さん向け）</strong><br>
+      毎月15日以降、GitHubリポジトリの <code>data/</code> フォルダ内のCSVを更新してください。<br>
+      ① <code>data/kpi.csv</code> — L3の月次KPI数値を1行追加<br>
+      ② <code>data/strategy.csv</code> — その月の施策を記録（任意）<br>
+      ③ <code>data/sales.csv</code> — 売上RAWデータを追加（別途ERP連携時）<br>
+      <span style="color:var(--m1d);font-weight:600;">GitHubでファイルを直接編集 → 保存するだけで自動反映されます。</span>
+      <div id="kpiLastUpdated" style="margin-top:6px;color:var(--tm);"></div>
+    </div>
+
+  </div>
+
+</div><!-- /paneKPI -->
+
 <!-- TAB: MEMBER RATIO -->
 <div id="paneMember" style="display:none;">
 
@@ -2536,13 +2607,312 @@ function renderYoYTab(){
 
 <script>
 // ── setLang ──────────────────────────────────
-function setLang(l){
+// ══════════════════════════════════════════════
+// LC8T KPI TAB — CSV-driven
+// ══════════════════════════════════════════════
+
+let kpiData = null, strategyData = null;
+let kpiMainChartObj = null, kpiCvChartObj = null, kpiTelChartObj = null;
+
+// ── CSV Parser ─────────────────────────────────
+function parseCSV(text){
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h=>h.trim());
+  return lines.slice(1).map(line=>{
+    const vals = line.split(',').map(v=>v.trim());
+    const obj = {};
+    headers.forEach((h,i)=>{ obj[h] = vals[i]||''; });
+    return obj;
+  });
+}
+
+// ── Load CSVs ─────────────────────────────────
+async function loadKPIData(){
+  const base = window.location.origin + window.location.pathname.replace('index.html','');
+  try {
+    const [kpiRes, strRes] = await Promise.all([
+      fetch(base + 'data/kpi.csv'),
+      fetch(base + 'data/strategy.csv')
+    ]);
+    kpiData = parseCSV(await kpiRes.text());
+    strategyData = parseCSV(await strRes.text());
+    return true;
+  } catch(e) {
+    // Fallback: use inline KPI data if fetch fails (local dev)
+    kpiData = KPI_INLINE;
+    strategyData = STRATEGY_INLINE;
+    return false;
+  }
+}
+
+// ── Inline fallback data (same as CSV) ─────────
+const KPI_INLINE = [
+  {ym:'202404',gmv:'2475178',total_orders:'551',aov:'4492',ec_orders:'145',tel_orders:'406',ec_cv_rate:'',new_line_id:'144',tel_list:'2405',tel_cv_rate:'0.169'},
+  {ym:'202405',gmv:'2009612',total_orders:'456',aov:'4407',ec_orders:'126',tel_orders:'330',ec_cv_rate:'',new_line_id:'179',tel_list:'3165',tel_cv_rate:'0.104'},
+  {ym:'202406',gmv:'1952438',total_orders:'492',aov:'3969',ec_orders:'109',tel_orders:'383',ec_cv_rate:'',new_line_id:'184',tel_list:'4350',tel_cv_rate:'0.088'},
+  {ym:'202407',gmv:'5756248',total_orders:'1230',aov:'4680',ec_orders:'572',tel_orders:'658',ec_cv_rate:'',new_line_id:'278',tel_list:'4052',tel_cv_rate:'0.162'},
+  {ym:'202408',gmv:'4582088',total_orders:'872',aov:'5255',ec_orders:'294',tel_orders:'578',ec_cv_rate:'',new_line_id:'2265',tel_list:'4031',tel_cv_rate:'0.143'},
+  {ym:'202409',gmv:'1562706',total_orders:'284',aov:'5501',ec_orders:'101',tel_orders:'183',ec_cv_rate:'',new_line_id:'3757',tel_list:'1997',tel_cv_rate:'0.092'},
+  {ym:'202410',gmv:'2432752',total_orders:'693',aov:'3511',ec_orders:'540',tel_orders:'153',ec_cv_rate:'',new_line_id:'2649',tel_list:'1964',tel_cv_rate:'0.078'},
+  {ym:'202411',gmv:'3350194',total_orders:'910',aov:'3681',ec_orders:'493',tel_orders:'417',ec_cv_rate:'',new_line_id:'3112',tel_list:'5561',tel_cv_rate:'0.075'},
+  {ym:'202412',gmv:'3363515',total_orders:'894',aov:'3763',ec_orders:'365',tel_orders:'529',ec_cv_rate:'',new_line_id:'1087',tel_list:'6728',tel_cv_rate:'0.079'},
+  {ym:'202501',gmv:'1625170',total_orders:'439',aov:'3702',ec_orders:'142',tel_orders:'297',ec_cv_rate:'',new_line_id:'1035',tel_list:'5038',tel_cv_rate:'0.059'},
+  {ym:'202502',gmv:'2703260',total_orders:'749',aov:'3609',ec_orders:'290',tel_orders:'459',ec_cv_rate:'',new_line_id:'1803',tel_list:'2513',tel_cv_rate:'0.183'},
+  {ym:'202503',gmv:'2155941',total_orders:'563',aov:'3829',ec_orders:'153',tel_orders:'410',ec_cv_rate:'',new_line_id:'2880',tel_list:'3122',tel_cv_rate:'0.131'},
+  {ym:'202504',gmv:'2221003',total_orders:'538',aov:'4128',ec_orders:'199',tel_orders:'339',ec_cv_rate:'',new_line_id:'5207',tel_list:'4130',tel_cv_rate:'0.082'},
+  {ym:'202505',gmv:'3644977',total_orders:'1139',aov:'3200',ec_orders:'543',tel_orders:'596',ec_cv_rate:'',new_line_id:'1208',tel_list:'4830',tel_cv_rate:'0.123'},
+  {ym:'202506',gmv:'2769158',total_orders:'842',aov:'3289',ec_orders:'319',tel_orders:'523',ec_cv_rate:'',new_line_id:'1670',tel_list:'5001',tel_cv_rate:'0.105'},
+  {ym:'202507',gmv:'2481698',total_orders:'703',aov:'3530',ec_orders:'286',tel_orders:'417',ec_cv_rate:'',new_line_id:'2193',tel_list:'4117',tel_cv_rate:'0.101'},
+  {ym:'202508',gmv:'2404885',total_orders:'654',aov:'3674',ec_orders:'277',tel_orders:'377',ec_cv_rate:'',new_line_id:'1693',tel_list:'4556',tel_cv_rate:'0.083'},
+  {ym:'202509',gmv:'1560816',total_orders:'420',aov:'3716',ec_orders:'169',tel_orders:'251',ec_cv_rate:'',new_line_id:'1916',tel_list:'4565',tel_cv_rate:'0.055'},
+  {ym:'202510',gmv:'3457963',total_orders:'843',aov:'4102',ec_orders:'409',tel_orders:'434',ec_cv_rate:'0.065',new_line_id:'6294',tel_list:'4146',tel_cv_rate:'0.105'},
+  {ym:'202511',gmv:'3183107',total_orders:'725',aov:'4391',ec_orders:'394',tel_orders:'331',ec_cv_rate:'0.117',new_line_id:'3358',tel_list:'3220',tel_cv_rate:'0.103'},
+  {ym:'202512',gmv:'2887317',total_orders:'614',aov:'4702',ec_orders:'314',tel_orders:'300',ec_cv_rate:'0.042',new_line_id:'7483',tel_list:'3970',tel_cv_rate:'0.076'},
+  {ym:'202601',gmv:'2956516',total_orders:'769',aov:'3845',ec_orders:'383',tel_orders:'386',ec_cv_rate:'0.119',new_line_id:'3208',tel_list:'4110',tel_cv_rate:'0.094'},
+  {ym:'202602',gmv:'2258293',total_orders:'581',aov:'3887',ec_orders:'372',tel_orders:'209',ec_cv_rate:'0.202',new_line_id:'1844',tel_list:'2471',tel_cv_rate:'0.085'},
+];
+
+const STRATEGY_INLINE = [
+  {ym:'202407',name:'英語PLUS初階版上市',type:'新品上市',channel:'WEB+KOL+TM',note:'英語啟蒙30M BCL活化開始'},
+  {ym:'202408',name:'夏季BCL名單大量収集',type:'名単収集',channel:'LINE',note:'BCL+2265件'},
+  {ym:'202410',name:'生活好習慣套組上市',type:'新品上市',channel:'WEB+TM+KOL',note:'13M BCL活化'},
+  {ym:'202411',name:'注音拼音套組上市',type:'新品上市',channel:'WEB+TM',note:'54M BCL活化'},
+  {ym:'202412',name:'雙11前後促銷',type:'促銷活動',channel:'WEB+TM',note:''},
+  {ym:'202505',name:'好情緒EQ套組上市',type:'新品上市',channel:'WEB+KOL+TM',note:'25M BCL活化'},
+  {ym:'202510',name:'語彙表達智育套組上市',type:'新品上市',channel:'WEB+TM',note:'18M BCL活化'},
+  {ym:'202510',name:'購物車再行銷旅程開始',type:'Super8旅程',channel:'WEB',note:'2025-11-12開始'},
+  {ym:'202512',name:'雙11前後促銷',type:'促銷活動',channel:'WEB+TM',note:'CVR高期'},
+  {ym:'202601',name:'巧虎雙語點讀圖鑑上市',type:'新品上市',channel:'WEB+TM',note:'6M BCL活化'},
+  {ym:'202603',name:'數學套組上市',type:'新品上市',channel:'WEB+TM',note:'49M BCL活化'},
+  {ym:'202603',name:'點讀大冒險上市',type:'新品上市',channel:'WEB+TM',note:'37M BCL活化'},
+];
+
+// ── Strategy type colors ───────────────────────
+const STRATEGY_COLORS = {
+  '新品上市':   {bg:'#b8f4ce',bd:'#3eb86a',tx:'#0a4020'},
+  '名単収集':   {bg:'#b8d8f4',bd:'#5a9fd4',tx:'#1a3060'},
+  '促銷活動':   {bg:'#f4b8c1',bd:'#c8707e',tx:'#7a1020'},
+  'Super8旅程': {bg:'#b8cef8',bd:'#4a80c8',tx:'#1a2060'},
+  'KOL合作':    {bg:'#f4d4b8',bd:'#c87040',tx:'#502000'},
+  'その他':     {bg:'#e0dcd8',bd:'#9a9490',tx:'#504840'},
+};
+function strColor(type){ return STRATEGY_COLORS[type]||STRATEGY_COLORS['その他']; }
+
+// ── Render KPI tab ─────────────────────────────
+async function renderKPITab(){
+  document.getElementById('kpiLoadState').style.display='';
+  document.getElementById('kpiSummaryGrid').style.display='none';
+
+  if(!kpiData){
+    const ok = await loadKPIData();
+    document.getElementById('kpiLastUpdated').textContent =
+      ok ? '✓ data/kpi.csv から読み込み済み' : '⚠ インラインデータを使用中（fetch失敗）';
+  }
+
+  document.getElementById('kpiLoadState').style.display='none';
+  document.getElementById('kpiSummaryGrid').style.display='';
+
+  renderKPICards();
+  renderKPIMainChart();
+  renderKPICvChart();
+  renderKPITelChart();
+  renderKPIStrategyTable();
+  renderKPIStrategyBar();
+}
+
+// ── KPI summary cards ──────────────────────────
+function renderKPICards(){
+  const isJa = lang==='ja';
+  const d = kpiData;
+  const n = d.length;
+  const latest = d[n-1];
+  const prev   = d[n-2];
+
+  const fmtM = v => v ? (Math.floor(+v/10000)).toLocaleString()+'万' : '—';
+  const fmtPct = v => v ? (+(+v*100).toFixed(1))+'%' : '—';
+  const diff = (a,b,pct=false) => {
+    if(!a||!b) return '';
+    const d = pct ? ((+a - +b)*100).toFixed(1)+'pt' : Math.floor((+a-+b)/10000)+'万';
+    return (+a>=+b?'▲':'▼')+d;
+  };
+
+  // Total GMV for latest 3 months vs prior 3
+  const last3  = d.slice(-3).reduce((s,r)=>s+(+r.gmv||0),0);
+  const prev3  = d.slice(-6,-3).reduce((s,r)=>s+(+r.gmv||0),0);
+  const l3diff = last3&&prev3 ? (last3>=prev3?'▲':'▼')+Math.abs(Math.floor((last3-prev3)/10000))+'万' : '';
+  const l3cls  = last3>=prev3?'c2':'c1';
+
+  const panels = [
+    { label:'最新月 GMV', val:fmtM(latest.gmv), sub:latest.ym.slice(0,4)+'/'+latest.ym.slice(4,6), cls:'c2',
+      badge: diff(latest.gmv,prev.gmv) },
+    { label:'直近3ヶ月 GMV合計', val:(Math.floor(last3/10000)).toLocaleString()+'万', sub:'vs前3ヶ月 '+l3diff, cls:l3cls },
+    { label:'最新月 電銷転化率', val:fmtPct(latest.tel_cv_rate), sub:'名単数 '+parseInt(latest.tel_list).toLocaleString(), cls:'c3',
+      badge: diff(latest.tel_cv_rate,prev.tel_cv_rate,true) },
+    { label:'最新月 EC CV率', val:fmtPct(latest.ec_cv_rate)||'—', sub:'目標 6.51%', cls:latest.ec_cv_rate&&+latest.ec_cv_rate>=0.065?'c2':'c1' },
+    { label:'最新月 新規LINE-ID', val:parseInt(latest.new_line_id).toLocaleString()+'件', sub:'名单収集', cls:'c4' },
+  ];
+
+  document.getElementById('kpiTopCards').innerHTML = panels.map(p=>`
+    <div class="kpi ${p.cls}">
+      <div class="kpi-lbl">${p.label}</div>
+      <div class="kpi-val" style="font-size:16px;">${p.val}</div>
+      <div class="kpi-sub">${p.sub}${p.badge?` <span style="font-size:10px;font-weight:700;">${p.badge}</span>`:''}</div>
+    </div>`).join('');
+}
+
+// ── Main composite chart ───────────────────────
+function renderKPIMainChart(){
+  const labels = kpiData.map(r=>r.ym.slice(2,4)+'/'+r.ym.slice(4,6));
+  const gmvVals    = kpiData.map(r=>Math.floor(+r.gmv/10000)||0);
+  const lineIdVals = kpiData.map(r=>+r.new_line_id||0);
+  const telCvVals  = kpiData.map(r=>r.tel_cv_rate ? +(+r.tel_cv_rate*100).toFixed(1) : null);
+
+  if(kpiMainChartObj) kpiMainChartObj.destroy();
+  kpiMainChartObj = new Chart(document.getElementById('kpiMainChart').getContext('2d'),{
+    data:{ labels, datasets:[
+      { type:'bar', label:'GMV（万元）', data:gmvVals,
+        backgroundColor:'#b8d8f4cc', borderColor:'#5a9fd4', borderWidth:1.5, borderRadius:3,
+        yAxisID:'yGMV',
+        datalabels:{ display:ctx=>ctx.dataset.data[ctx.dataIndex]>=100,
+          anchor:'end', align:'top', formatter:v=>v.toLocaleString(),
+          font:{size:8,weight:'600'}, color:'#5a9fd4', offset:1 }},
+      { type:'line', label:'新規LINE-ID（件）', data:lineIdVals,
+        borderColor:'#3eb86a', backgroundColor:'#b8f4ce40',
+        borderWidth:2, pointRadius:3, tension:0.3, yAxisID:'yLine',
+        datalabels:{ display:false }},
+      { type:'line', label:'電銷転化率（%）', data:telCvVals,
+        borderColor:'#c8707e', backgroundColor:'transparent',
+        borderWidth:2, pointRadius:3, tension:0.3, yAxisID:'yCv',
+        borderDash:[5,3],
+        datalabels:{ display:ctx=>ctx.dataset.data[ctx.dataIndex]!==null,
+          anchor:'top', align:'top', formatter:v=>v===null?'':v+'%',
+          font:{size:8,weight:'700'}, color:'#c8707e', offset:1 }},
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      animation:{ duration:0 },
+      interaction:{mode:'index', intersect:false},
+      plugins:{
+        legend:{ position:'top', labels:{font:{size:10},boxWidth:11} },
+        tooltip:{callbacks:{
+          label:ctx=>` ${ctx.dataset.label}: ${ctx.dataset.type==='bar'?ctx.parsed.y.toLocaleString()+'万元':ctx.parsed.y+( ctx.dataset.yAxisID==='yCv'?'%':'件')}`
+        }}
+      },
+      scales:{
+        x:{ ticks:{font:{size:10}}, grid:{display:false} },
+        yGMV:{ type:'linear', position:'left', ticks:{font:{size:10},callback:v=>v+'万'}, grid:{color:'#f0ebe5'} },
+        yLine:{ type:'linear', position:'right', ticks:{font:{size:9},callback:v=>v.toLocaleString()}, grid:{display:false} },
+        yCv:{  type:'linear', position:'right', ticks:{font:{size:9},callback:v=>v+'%'}, grid:{display:false},
+               min:0, max:25 },
+      }
+    },
+    plugins:[ChartDataLabels]
+  });
+}
+
+// ── EC CV rate chart ───────────────────────────
+function renderKPICvChart(){
+  const withCv = kpiData.filter(r=>r.ec_cv_rate);
+  const labels = withCv.map(r=>r.ym.slice(2,4)+'/'+r.ym.slice(4,6));
+  const vals   = withCv.map(r=>+(+r.ec_cv_rate*100).toFixed(1));
+  if(kpiCvChartObj) kpiCvChartObj.destroy();
+  kpiCvChartObj = new Chart(document.getElementById('kpiCvChart').getContext('2d'),{
+    type:'line', data:{ labels, datasets:[
+      { label:'EC CV率', data:vals,
+        borderColor:'#5a9fd4', backgroundColor:'#b8d8f440',
+        borderWidth:2.5, pointRadius:4, tension:0.3, fill:true,
+        datalabels:{ display:true, anchor:'top', align:'top',
+          formatter:v=>v+'%', font:{size:9,weight:'700'}, color:'#5a9fd4', offset:2 }},
+      { label:'目標 6.51%', data:labels.map(()=>6.51),
+        borderColor:'#c0392b', borderWidth:1.5, borderDash:[5,3],
+        pointRadius:0, backgroundColor:'transparent', datalabels:{display:false} },
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, animation:{duration:0},
+      plugins:{ legend:{position:'top',labels:{font:{size:10},boxWidth:10}},
+        tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y}%`}} },
+      scales:{ x:{ticks:{font:{size:9}},grid:{display:false}},
+               y:{ticks:{font:{size:10},callback:v=>v+'%'},grid:{color:'#f0ebe5'},min:0,max:25} }
+    }, plugins:[ChartDataLabels]
+  });
+}
+
+// ── Tel chart ─────────────────────────────────
+function renderKPITelChart(){
+  const labels  = kpiData.map(r=>r.ym.slice(2,4)+'/'+r.ym.slice(4,6));
+  const listVals = kpiData.map(r=>+r.tel_list||0);
+  const cvVals   = kpiData.map(r=>+(+r.tel_cv_rate*100).toFixed(1));
+  if(kpiTelChartObj) kpiTelChartObj.destroy();
+  kpiTelChartObj = new Chart(document.getElementById('kpiTelChart').getContext('2d'),{
+    data:{ labels, datasets:[
+      { type:'bar', label:'名単数', data:listVals,
+        backgroundColor:'#f4e4b8cc', borderColor:'#c89830', borderWidth:1.5, borderRadius:3,
+        yAxisID:'yList', datalabels:{display:false} },
+      { type:'line', label:'転化率%', data:cvVals,
+        borderColor:'#c8707e', backgroundColor:'transparent',
+        borderWidth:2.5, pointRadius:3, tension:0.3, yAxisID:'yCv',
+        datalabels:{ display:true, anchor:'top', align:'top',
+          formatter:v=>v+'%', font:{size:8,weight:'700'}, color:'#c8707e', offset:1 }},
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, animation:{duration:0},
+      interaction:{mode:'index',intersect:false},
+      plugins:{ legend:{position:'top',labels:{font:{size:10},boxWidth:10}},
+        tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y}${ctx.dataset.yAxisID==='yCv'?'%':'件'}`}} },
+      scales:{
+        x:{ticks:{font:{size:9}},grid:{display:false}},
+        yList:{ type:'linear',position:'left', ticks:{font:{size:10},callback:v=>v.toLocaleString()}, grid:{color:'#f0ebe5'} },
+        yCv:{  type:'linear',position:'right', ticks:{font:{size:9},callback:v=>v+'%'}, grid:{display:false}, min:0, max:25 }
+      }
+    }, plugins:[ChartDataLabels]
+  });
+}
+
+// ── Strategy bar (chips under main chart) ─────
+function renderKPIStrategyBar(){
+  const bar = document.getElementById('kpiStrategyBar');
+  if(!bar||!strategyData) return;
+  bar.innerHTML = strategyData.map(s=>{
+    const c = strColor(s.type);
+    const label = s.ym.slice(2,4)+'/'+s.ym.slice(4,6)+' '+s.name;
+    return `<span style="background:${c.bg};border:1.5px solid ${c.bd};color:${c.tx};font-size:10px;font-weight:600;padding:2px 9px;border-radius:10px;cursor:default;" title="${s.note}">${label}</span>`;
+  }).join('');
+}
+
+// ── Strategy table ─────────────────────────────
+function renderKPIStrategyTable(){
+  if(!strategyData) return;
+  const typeFilter = [...new Set(strategyData.map(s=>s.type))];
+  let html = `<table style="width:100%;border-collapse:collapse;font-size:11px;">
+    <thead><tr>
+      <th style="text-align:left;padding:6px 10px;border-bottom:1.5px solid var(--bdr);background:var(--bg);">年月</th>
+      <th style="text-align:left;padding:6px 10px;border-bottom:1.5px solid var(--bdr);background:var(--bg);">施策名</th>
+      <th style="text-align:left;padding:6px 10px;border-bottom:1.5px solid var(--bdr);background:var(--bg);">種別</th>
+      <th style="text-align:left;padding:6px 10px;border-bottom:1.5px solid var(--bdr);background:var(--bg);">管道</th>
+      <th style="text-align:left;padding:6px 10px;border-bottom:1.5px solid var(--bdr);background:var(--bg);">メモ</th>
+    </tr></thead><tbody>`;
+  strategyData.forEach(s=>{
+    const c = strColor(s.type);
+    html += `<tr onmouseover="this.style.background='#fdf5f7'" onmouseout="this.style.background=''">
+      <td style="padding:5px 10px;border-bottom:1px solid var(--bdr);font-weight:600;">${s.ym.slice(0,4)+'/'+s.ym.slice(4,6)}</td>
+      <td style="padding:5px 10px;border-bottom:1px solid var(--bdr);">${s.name}</td>
+      <td style="padding:5px 10px;border-bottom:1px solid var(--bdr);">
+        <span style="background:${c.bg};border:1px solid ${c.bd};color:${c.tx};font-size:10px;padding:1px 7px;border-radius:8px;font-weight:600;">${s.type}</span>
+      </td>
+      <td style="padding:5px 10px;border-bottom:1px solid var(--bdr);color:var(--ts);">${s.channel}</td>
+      <td style="padding:5px 10px;border-bottom:1px solid var(--bdr);color:var(--tm);">${s.note}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('kpiStrategyTable').innerHTML = html;
+}
+
+
   lang = l;
   applyI18n();
   renderTagsUI();
   if(currentTab==='bcl')         renderBCL();
   else if(currentTab==='member') renderMemberTab();
   else if(currentTab==='yoy')    renderYoYTab();
+  else if(currentTab==='kpi')    renderKPITab();
   else                           renderAllFull();
 }
 
