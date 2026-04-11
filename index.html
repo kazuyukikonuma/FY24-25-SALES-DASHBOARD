@@ -1335,57 +1335,58 @@ function setBclAgeMode(m){
 // ── Population share grid ────────────────────
 function renderBclPopGrid(){
   const isJa = lang==='ja';
-  const totalAge = Object.values(BCL.age_total).reduce((s,v)=>s+v,0);
 
-  // Map birth year to current age rank and BCL count
-  // BCL age_total uses current-age buckets
-  // birth year 2025 → age 0~12M (split SS 7~12 and S 0~6)
-  // birth year 2024 → age 13~24M → S:13~24M
-  // birth year 2023 → age 25~36M → AA:25~36M
-  // birth year 2022 → age 37~48M ⊂ A:37~60M
-  // birth year 2021 → age 49~60M ⊂ A:37~60M
-  // birth year 2020 → age 61~72M ⊂ B:61M+
+  // Per-birth-year BCL counts (有効会員, 生年月日ベース)
+  // Source: 内政部確定値 × BCL実データ集計
+  const BCL_BY_YEAR = {
+    2020: 23097,
+    2021: 24007,
+    2022: 21257,
+    2023: 12214,
+    2024: 11228,
+    2025: 6338,
+    2026: 3347,  // 妊娠中・出生前
+  };
 
   const yearData = [
+    { year:2026, pop:null,             ageRange:isJa?'妊娠中':'妊娠中',
+      bclCount:BCL_BY_YEAR[2026], badge:BCL_RANK_BADGE['未生（妊娠中）'], rankLabel:'A（孕期）', noPop:true },
     { year:2025, pop:TW_BIRTH_POP[2025], ageRange:'0〜12M',
-      bclCount: BCL.age_total['S: 0~6M'] + BCL.age_total['SS: 7~12M'],
-      badge: BCL_RANK_BADGE['SS: 7~12M'], rankLabel:'S/SS' },
+      bclCount:BCL_BY_YEAR[2025], badge:BCL_RANK_BADGE['S: 0~6M'],  rankLabel:'S/SS' },
     { year:2024, pop:TW_BIRTH_POP[2024], ageRange:'13〜24M',
-      bclCount: BCL.age_total['S: 13~24M'],
-      badge: BCL_RANK_BADGE['S: 13~24M'], rankLabel:'S' },
+      bclCount:BCL_BY_YEAR[2024], badge:BCL_RANK_BADGE['S: 13~24M'], rankLabel:'S' },
     { year:2023, pop:TW_BIRTH_POP[2023], ageRange:'25〜36M',
-      bclCount: BCL.age_total['AA: 25~36M'],
-      badge: BCL_RANK_BADGE['AA: 25~36M'], rankLabel:'AA' },
+      bclCount:BCL_BY_YEAR[2023], badge:BCL_RANK_BADGE['AA: 25~36M'], rankLabel:'AA' },
     { year:2022, pop:TW_BIRTH_POP[2022], ageRange:'37〜48M',
-      bclCount: Math.round(BCL.age_total['A: 37~60M'] * 0.55), // approx half of A:37~60
-      badge: BCL_RANK_BADGE['A: 37~60M'], rankLabel:'A', approx:true },
+      bclCount:BCL_BY_YEAR[2022], badge:BCL_RANK_BADGE['A: 37~60M'], rankLabel:'A' },
     { year:2021, pop:TW_BIRTH_POP[2021], ageRange:'49〜60M',
-      bclCount: Math.round(BCL.age_total['A: 37~60M'] * 0.45),
-      badge: BCL_RANK_BADGE['A: 37~60M'], rankLabel:'A', approx:true },
+      bclCount:BCL_BY_YEAR[2021], badge:BCL_RANK_BADGE['A: 37~60M'], rankLabel:'A' },
     { year:2020, pop:TW_BIRTH_POP[2020], ageRange:'61M+',
-      bclCount: BCL.age_total['B: 61M+'],
-      badge: BCL_RANK_BADGE['B: 61M+'], rankLabel:'B' },
+      bclCount:BCL_BY_YEAR[2020], badge:BCL_RANK_BADGE['B: 61M+'], rankLabel:'B' },
   ];
 
   document.getElementById('bclPopGrid').innerHTML = yearData.map(d=>{
-    const share = (d.bclCount / d.pop * 100).toFixed(2);
+    const share = d.noPop || !d.pop ? null : (d.bclCount / d.pop * 100).toFixed(2);
     const b = d.badge;
     return `<div style="background:${b.bg};border:1.5px solid ${b.border};border-radius:var(--r);padding:10px 12px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
         <span style="font-size:12px;font-weight:700;color:var(--tp);">${d.year}年生</span>
-        <span style="font-size:10px;font-weight:700;color:${b.border};background:${b.bg};border:1px solid ${b.border};padding:1px 6px;border-radius:8px;">${d.rankLabel}</span>
+        <span style="font-size:9px;font-weight:700;color:${b.border};background:${b.bg};border:1px solid ${b.border};padding:1px 5px;border-radius:8px;">${d.rankLabel}</span>
       </div>
       <div style="font-size:9px;color:var(--ts);margin-bottom:6px;">${d.ageRange}（現在月齢）</div>
-      <div style="font-size:18px;font-weight:700;color:var(--tp);line-height:1;">${share}<span style="font-size:11px;">%</span></div>
-      <div style="font-size:9px;color:${b.border};margin-top:2px;">シェア</div>
+      ${share !== null
+        ? `<div style="font-size:18px;font-weight:700;color:var(--tp);line-height:1;">${share}<span style="font-size:11px;">%</span></div>
+           <div style="font-size:9px;color:${b.border};margin-top:2px;">${isJa?'シェア':'佔比'}</div>`
+        : `<div style="font-size:13px;font-weight:600;color:var(--ts);line-height:1.4;">${isJa?'出生数\n未確定':'出生數\n未確定'}</div>`
+      }
       <div style="border-top:1px solid ${b.border}33;margin-top:6px;padding-top:5px;display:flex;justify-content:space-between;">
         <div style="text-align:center;">
-          <div style="font-size:10px;font-weight:600;color:var(--tp);">${d.bclCount.toLocaleString()}${d.approx?'*':''}</div>
+          <div style="font-size:10px;font-weight:600;color:var(--tp);">${d.bclCount.toLocaleString()}</div>
           <div style="font-size:8px;color:var(--ts);">BCL</div>
         </div>
         <div style="text-align:center;">
-          <div style="font-size:10px;font-weight:600;color:var(--ts);">${(d.pop/10000).toFixed(1)}万</div>
-          <div style="font-size:8px;color:var(--ts);">出生数</div>
+          <div style="font-size:10px;font-weight:600;color:var(--ts);">${d.pop ? (d.pop/10000).toFixed(1)+'万' : '—'}</div>
+          <div style="font-size:8px;color:var(--ts);">${isJa?'出生数':'出生數'}</div>
         </div>
       </div>
     </div>`;
@@ -2259,7 +2260,7 @@ function renderYoYTab(){
         📊 台湾出生年別 人口シェア（2026/04現在）
         <span style="font-size:9px;font-weight:400;color:var(--tm);margin-left:8px;">※出生数出典: 中華民国内政部 ※BCL=有効会員現在月齢ベース</span>
       </div>
-      <div id="bclPopGrid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;"></div>
+      <div id="bclPopGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;"></div>
     </div>
 
     <!-- DB summary KPI -->
