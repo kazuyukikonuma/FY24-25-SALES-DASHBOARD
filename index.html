@@ -647,7 +647,10 @@ function renderChart(){
   const isLine=chartType==='line';
   const isPct=valueMode==='pct'&&!isLine;
 
-  const datasets=series.map((s,si)=>{
+  // datasets を先に空配列で宣言し push する
+  // → datalabels コールバック内で datasets 全体を参照できるようにする
+  const datasets = [];
+  series.forEach((s,si)=>{
     const pal=SERIES_PALETTE[s.colorIdx];
     const raw=seriesData[si];
     const vals=isPct
@@ -655,7 +658,7 @@ function renderChart(){
       :raw;
 
     if(isLine){
-      return{
+      datasets.push({
         label:seriesLabel(s),data:vals,
         borderColor:pal.stroke,backgroundColor:pal.fill+'50',
         borderWidth:2.5,pointRadius:4,pointHoverRadius:7,tension:0.3,fill:false,
@@ -666,9 +669,9 @@ function renderChart(){
           font:{size:9,weight:'600'},color:pal.stroke,
           offset:2,
         }
-      };
+      });
     }else{
-      return{
+      datasets.push({
         label:seriesLabel(s),data:vals,
         backgroundColor:pal.fill+'cc',borderColor:pal.stroke,
         borderWidth:1.5,borderRadius:isStacked?0:4,
@@ -679,22 +682,22 @@ function renderChart(){
           formatter: v => v.toFixed(0)+'%',
           font:{size:9,weight:'700'}, color:'#333'
         } : isStacked ? [
-          // 実数積み上げ ① 各セグメント内の値
+          // ① 各セグメント内の値（系列色・小フォント）
           {
             display: ctx => (+ctx.dataset.data[ctx.dataIndex]||0) >= 3,
             anchor:'center', align:'center',
             formatter: v => fmtManR(v*10000),
             font:{size:8,weight:'600'}, color: pal.stroke, clamp:true
           },
-          // 実数積み上げ ② 最後のdatasetのみスタック合計を上部に
+          // ② 最後のdatasetのみスタック合計をバー上部に（datasets参照時点では配列完成済み）
           {
             display: ctx => {
               if(ctx.datasetIndex !== datasets.length - 1) return false;
-              return datasets.reduce((s,ds)=>(+ds.data[ctx.dataIndex]||0)+s,0) > 0;
+              return datasets.reduce((sum,ds)=>(+ds.data[ctx.dataIndex]||0)+sum, 0) > 0;
             },
             anchor:'end', align:'top',
-            formatter: (v, ctx) => {
-              const total = datasets.reduce((s,ds)=>(+ds.data[ctx.dataIndex]||0)+s,0);
+            formatter: (_v, ctx) => {
+              const total = datasets.reduce((sum,ds)=>(+ds.data[ctx.dataIndex]||0)+sum, 0);
               return fmtManR(total*10000);
             },
             font:{size:9,weight:'700'}, color:'#444', offset:2
@@ -706,7 +709,7 @@ function renderChart(){
           formatter: v => fmtManR(v*10000),
           font:{size:9,weight:'700'}, color:'#444', offset:2
         }
-      };
+      });
     }
   });
 
