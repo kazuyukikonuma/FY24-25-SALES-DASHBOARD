@@ -673,11 +673,32 @@ function renderChart(){
         backgroundColor:pal.fill+'cc',borderColor:pal.stroke,
         borderWidth:1.5,borderRadius:isStacked?0:4,
         datalabels: isPct ? {
+          // 比率モード: 各セグメント内に%表示
           display: ctx => ctx.dataset.data[ctx.dataIndex] >= 5,
           anchor:'center', align:'center',
           formatter: v => v.toFixed(0)+'%',
           font:{size:9,weight:'700'}, color:'#333'
-        } : { display: false }  // 実数は合計のみ(stackTotalsプラグイン)
+        } : isStacked ? {
+          // 実数積み上げ: 最後の系列のみスタック合計をバー上部に表示
+          display: ctx => {
+            if(ctx.datasetIndex !== datasets.length - 1) return false;
+            // sum all datasets at this label index
+            const total = datasets.reduce((sum,ds) => sum+(+ds.data[ctx.dataIndex]||0), 0);
+            return total > 0;
+          },
+          anchor:'end', align:'top',
+          formatter: (v, ctx) => {
+            const total = datasets.reduce((sum,ds) => sum+(+ds.data[ctx.dataIndex]||0), 0);
+            return fmtManR(total*10000);
+          },
+          font:{size:9,weight:'700'}, color:'#444', offset:2
+        } : {
+          // 非積み上げ（grouped bar）: 各バーの上に値
+          display: ctx => ctx.dataset.data[ctx.dataIndex] > 0,
+          anchor:'end', align:'top',
+          formatter: v => fmtManR(v*10000),
+          font:{size:9,weight:'700'}, color:'#444', offset:2
+        }
       };
     }
   });
