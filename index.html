@@ -10,7 +10,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700&display=swap');
 :root{
   --bg:#fafaf8;--sur:#fff;--bdr:#ede9e4;
-  --tp:#2d2926;--ts:#7a746e;--tm:#b0a89e;
+  --tp:#2d2926;--ts:#6b5c60;--tm:#b89098;
   --m1:#f4b8c1;--m1d:#c8707e;
   --m2:#b8d8f4;--m2d:#5a9fd4;
   --m3:#b8f4ce;--m3d:#3eb86a;
@@ -23,6 +23,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Outfit','Noto Sans JP',sans-serif;background:var(--bg);color:var(--tp);padding:16px 20px 48px;}
+.page-wrap{max-width:1280px;margin:0 auto;}
 
 /* HEADER */
 .hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:1.5px solid var(--bdr);}
@@ -34,7 +35,8 @@ body{font-family:'Outfit','Noto Sans JP',sans-serif;background:var(--bg);color:v
 .badge{background:var(--m1);color:#8a3040;font-size:11px;font-weight:600;padding:3px 11px;border-radius:20px;}
 
 /* KPI */
-.kpi-grid{display:grid;grid-template-columns:repeat(9,1fr);gap:8px;margin-bottom:12px;}
+.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr) 2px repeat(3,1fr) 2px repeat(4,1fr);gap:8px;margin-bottom:12px;}
+.kpi-sep{background:var(--bdr);border-radius:2px;align-self:stretch;margin:4px 0;}
 .kpi{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--r);padding:11px 12px;position:relative;overflow:hidden;}
 .kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
 .kpi.c0::after{background:linear-gradient(90deg,var(--m1),var(--m2));}
@@ -51,20 +53,20 @@ body{font-family:'Outfit','Noto Sans JP',sans-serif;background:var(--bg);color:v
 .ctrl-panel{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--r);padding:12px 16px;margin-bottom:12px;}
 .ctrl-rows{display:flex;flex-direction:column;gap:8px;}
 .ctrl-row{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;}
-.ctrl-row-label{font-size:10px;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:.5px;min-width:68px;flex-shrink:0;padding-top:5px;}
+.ctrl-row-label{font-size:11px;font-weight:700;color:var(--ts);letter-spacing:.5px;min-width:68px;flex-shrink:0;padding-top:5px;}
 .ctrl-row-body{display:flex;flex-direction:column;gap:4px;flex:1;}
 .bg{display:flex;flex-wrap:wrap;gap:4px;align-items:center;}
 .btn{border:1.5px solid var(--bdr);background:var(--sur);color:var(--ts);font-size:11px;font-weight:500;padding:4px 11px;border-radius:20px;cursor:pointer;transition:all .12s;font-family:inherit;white-space:nowrap;}
 .btn:hover{border-color:var(--acc);color:var(--tp);}
 .btn.active{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600;}
-.preset-btn{border:1.5px solid var(--bdr);background:var(--sur);color:var(--ts);font-size:10px;font-weight:600;padding:3px 9px;border-radius:10px;cursor:pointer;font-family:inherit;transition:all .12s;white-space:nowrap;}
+.preset-btn{border:1.5px solid var(--bdr);background:var(--sur);color:var(--ts);font-size:11px;font-weight:600;padding:4px 10px;border-radius:10px;cursor:pointer;font-family:inherit;transition:all .12s;white-space:nowrap;}
 .preset-btn:hover{border-color:var(--acc);color:var(--tp);}
 .preset-btn.active{background:var(--acc);border-color:var(--acc);color:#fff;}
 .sep{width:1px;height:18px;background:var(--bdr);margin:0 2px;align-self:center;}
 
 /* RANGE MONTHS */
 .range-months{display:flex;flex-wrap:wrap;gap:3px;}
-.rm{border:1.5px solid var(--bdr);background:var(--sur);color:var(--ts);font-size:9px;font-weight:500;padding:3px 7px;border-radius:8px;cursor:pointer;font-family:inherit;transition:all .1s;white-space:nowrap;}
+.rm{border:1.5px solid var(--bdr);background:var(--sur);color:var(--ts);font-size:10px;font-weight:500;padding:3px 8px;border-radius:8px;cursor:pointer;font-family:inherit;transition:all .1s;white-space:nowrap;}
 .rm:hover{border-color:var(--acc);}
 .rm.in-range{background:var(--m2);border-color:var(--m2d);color:#1a5080;}
 .rm.start{background:var(--m2d);border-color:var(--m2d);color:#fff;font-weight:700;}
@@ -72,7 +74,7 @@ body{font-family:'Outfit','Noto Sans JP',sans-serif;background:var(--bg);color:v
 .rm.new-era{border-color:#a0d0b0;color:#2a7040;}
 .rm.new-era.in-range{background:var(--m3);border-color:var(--m3d);color:#1a6030;}
 .rm.new-era.start,.rm.new-era.end{background:var(--m3d);border-color:var(--m3d);color:#fff;}
-.row-label-sm{font-size:9px;font-weight:600;color:var(--tm);min-width:36px;padding-top:4px;flex-shrink:0;}
+.row-label-sm{font-size:11px;font-weight:600;color:var(--ts);min-width:36px;padding-top:3px;flex-shrink:0;}
 
 /* SERIES PICKER */
 .series-picker{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--r);padding:12px 16px;margin-bottom:12px;}
@@ -131,6 +133,7 @@ tr:not(.rt):not(.ryoy):hover td{background:#fdf5f7;}
 </head>
 <body>
 
+<div class="page-wrap">
 <!-- HEADER -->
 <div class="hdr">
   <div>
@@ -147,9 +150,9 @@ tr:not(.rt):not(.ryoy):hover td{background:#fdf5f7;}
 <!-- TAB NAV -->
 <div style="display:flex;gap:0;margin-bottom:14px;border-bottom:2px solid var(--bdr);">
   <button class="tab-btn active" id="tabSales" onclick="switchTab('sales')" data-i18n="tabSales">📊 売上分析</button>
+  <button class="tab-btn" id="tabYoY" onclick="switchTab('yoy')" data-i18n="tabYoY">📈 経年比較</button>
   <button class="tab-btn" id="tabBCL" onclick="switchTab('bcl')" data-i18n="tabBCL">👥 BCL DB</button>
   <button class="tab-btn" id="tabMember" onclick="switchTab('member')" data-i18n="tabMember">🔄 新旧会員比率</button>
-  <button class="tab-btn" id="tabYoY" onclick="switchTab('yoy')" data-i18n="tabYoY">📈 経年比較</button>
 </div>
 
 <!-- TAB: SALES -->
@@ -593,8 +596,9 @@ function renderKPI(){
     ...cTotals.map((c,i)=>({label:c.label,val:fmtMan(c.val),pct:total>0?+(c.val/total*100).toFixed(1):0,cls:`c${i+5}`})),
   ];
 
-  document.getElementById('kpiGrid').innerHTML=panels.map(p=>`
-    <div class="kpi ${p.cls}">
+  document.getElementById('kpiGrid').innerHTML=panels.map((p,i)=>
+    (i===2||i===5?'<div class="kpi-sep"></div>':'')+
+    `<div class="kpi ${p.cls}">
       <div class="kpi-lbl">${p.label}</div>
       <div class="kpi-val">${p.val}</div>
       <div class="kpi-sub">万元</div>
@@ -873,12 +877,11 @@ function _renderAllBase(){renderKPI();renderChart();renderAnalysis();renderTable
 // ══ INIT ══
 buildRangePicker();
 applyI18n();
-// Default: add 學習×TM and 學習×WEB to start
+// Default: 全商品群×全管道
 series=[
-  {prod:'學習商品',ch:'TM',id:'s1',colorIdx:0},
-  {prod:'學習商品',ch:'WEB',id:'s2',colorIdx:1},
+  {prod:'__ALL__',ch:'__ALL__',id:'s1',colorIdx:0},
 ];
-seriesIdCounter=2;
+seriesIdCounter=1;
 renderTagsUI();
 // renderAllFull is defined later in the script; use setTimeout to ensure all functions are loaded
 setTimeout(()=>{ renderAllFull(); }, 0);
@@ -2500,7 +2503,7 @@ function setLang(l){
 // ── Add YoY i18n keys ────────────────────────
 (function(){
   const extra = {
-    tabYoY:       {ja:'📈 経年比較',     zh:'📈 經年比較'},
+    tabYoY:       {ja:'📈 経年比較',     zh:'📈 跨年比較'},
     yoyCompare:   {ja:'比較期間',         zh:'比較期間'},
     yoyLineTitle: {ja:'前年比（YoY）推移', zh:'前年比（YoY）趨勢'},
     yoyLineSub:   {ja:'0%ライン基準・プラスが改善', zh:'以0%為基準・正值為改善'},
@@ -2511,5 +2514,6 @@ function setLang(l){
 })();
 </script>
 
+</div><!-- /page-wrap -->
 </body>
 </html>
