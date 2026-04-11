@@ -373,7 +373,7 @@ const SERIES_PALETTE=[
 ];
 const toMan=v=>+(v/10000).toFixed(1);
 const fmtMan=v=>toMan(v).toLocaleString('ja-JP');
-const fmtManR=v=>{const m=toMan(v);return m%1===0?m.toLocaleString():m.toFixed(1);}
+const fmtManR=v=>Math.floor(v/10000).toLocaleString();
 
 // ══════════════════════════════════════════════
 // i18n
@@ -696,27 +696,7 @@ function renderChart(){
     }
   });
 
-  // 積み上げ実数モード: 合計ラベル専用の透明datasetを最後に追加
-  // forEach完了後なので seriesData が全て確定している
-  if(isStacked && !isPct && !isLine){
-    const totals = labels.map((_,li)=>
-      seriesData.reduce((sum,sd)=>sum+(+sd[li]||0), 0)
-    );
-    datasets.push({
-      label:'__total__',
-      data: totals,
-      backgroundColor:'transparent',
-      borderColor:'transparent',
-      borderWidth:0,
-      stack:'default',  // 同じstackに入れることでバー幅を維持
-      datalabels:{
-        display: ctx => (+ctx.dataset.data[ctx.dataIndex]||0) > 0,
-        anchor:'end', align:'top',
-        formatter: v => fmtManR(v*10000),
-        font:{size:9,weight:'700'}, color:'#444', offset:2
-      }
-    });
-  }
+
 
   // ── Total-on-top plugin registered once at top level ──────
 
@@ -743,7 +723,6 @@ function renderChart(){
 
         tooltip:{callbacks:{
           label:ctx=>{
-            if(ctx.dataset.label==='__total__') return null;
             const v=ctx.parsed.y;
             return ` ${ctx.dataset.label}: ${isPct?v.toFixed(1)+'%':v.toLocaleString()+'万元'}`;
           }
@@ -759,6 +738,8 @@ function renderChart(){
     },
     plugins:[ChartDataLabels]
   });
+
+
 
   // Inline legend
   document.getElementById('legendInline').innerHTML=series.map(s=>{
