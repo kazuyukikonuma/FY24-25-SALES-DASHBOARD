@@ -708,7 +708,7 @@ function renderChart(){
       backgroundColor:'transparent',
       borderColor:'transparent',
       borderWidth:0,
-      stack:'__total__',  // 別stackに分けて高さに影響させない
+      stack:'default',  // 同じstackに入れることでバー幅を維持
       datalabels:{
         display: ctx => (+ctx.dataset.data[ctx.dataIndex]||0) > 0,
         anchor:'end', align:'top',
